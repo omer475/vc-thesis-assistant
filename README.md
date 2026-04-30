@@ -20,10 +20,19 @@ Early MVP. Building in 5 phases:
 - [x] Phase 1 — Document reader + local SQLite store (.pdf, .md, .txt)
 - [x] Phase 2 — Firm-profile generator (Claude Opus 4.7, prompt-cached)
 - [x] Phase 3 — Deal-analysis pipeline
-- [ ] Phase 4 — Streamlit web UI
+- [x] Phase 4 — Streamlit web UI
 - [ ] Phase 5 — First design-partner firm onboarded
 
-## Usage
+## Run the web UI
+
+```bash
+source venv/bin/activate
+streamlit run src/app.py
+```
+
+Then open http://localhost:8501 — upload firm docs, generate the profile, drop in a deck, get a memo back.
+
+## Or use it from the command line
 
 ```bash
 source venv/bin/activate
