@@ -17,11 +17,22 @@ We use **retrieval-augmented generation** (the system looks up relevant past mem
 Early MVP. Building in 5 phases:
 
 - [x] Phase 0 — Project skeleton
-- [ ] Phase 1 — PDF reader + local document store
-- [ ] Phase 2 — Firm-profile generator
-- [ ] Phase 3 — Deal-analysis pipeline
+- [x] Phase 1 — Document reader + local SQLite store (.pdf, .md, .txt)
+- [x] Phase 2 — Firm-profile generator (Claude Opus 4.7, prompt-cached)
+- [x] Phase 3 — Deal-analysis pipeline
 - [ ] Phase 4 — Streamlit web UI
 - [ ] Phase 5 — First design-partner firm onboarded
+
+## Usage
+
+```bash
+source venv/bin/activate
+
+# Drop docs into data/firm_docs/ then:
+python -m src.ingest                                    # build corpus
+python -m src.profile                                   # → data/firm_profile.md
+python -m src.analyze data/incoming_decks/<deck>.md     # → data/analyses/<deck>.memo.md
+```
 
 ## Setup
 
