@@ -21,7 +21,19 @@ Early MVP. Building in 5 phases:
 - [x] Phase 2 — Firm-profile generator (Claude Opus 4.7, prompt-cached)
 - [x] Phase 3 — Deal-analysis pipeline
 - [x] Phase 4 — Streamlit web UI
-- [ ] Phase 5 — First design-partner firm onboarded
+- [x] Phase 5 — Render deploy config (persistent disk, password-gated)
+- [ ] Phase 6 — First design-partner firm onboarded
+
+## Deploy on Render (~$8/month)
+
+1. https://render.com → sign up with GitHub
+2. New → **Blueprint** → connect this repo
+3. Render reads `render.yaml` and prompts for two env vars:
+   - `ANTHROPIC_API_KEY` — paste your key
+   - `APP_PASSWORD` — pick anything; share it with people who should access the app
+4. Apply. First deploy takes ~3 minutes.
+
+The persistent disk (mounted at `/var/data`) keeps uploaded firm docs and the SQLite store across restarts. On first boot, the included example data (Forge Ventures fixtures) is auto-loaded so the demo isn't empty.
 
 ## Run the web UI
 

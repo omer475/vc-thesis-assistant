@@ -15,12 +15,10 @@ from pathlib import Path
 import anthropic
 from dotenv import load_dotenv
 
-load_dotenv()
+from src.config import ANALYSES_DIR, DB_PATH, PROFILE_PATH, ensure_dirs
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-DB_PATH = PROJECT_ROOT / "data" / "firm.db"
-PROFILE_PATH = PROJECT_ROOT / "data" / "firm_profile.md"
-ANALYSES_DIR = PROJECT_ROOT / "data" / "analyses"
+load_dotenv()
+ensure_dirs()
 
 INSTRUCTIONS = """You are an investment analyst at this firm. A new pitch deck has just landed. Your job: produce a one-page fit memo that a partner will read in two minutes before deciding whether to take the meeting.
 

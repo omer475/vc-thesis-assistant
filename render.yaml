@@ -1,0 +1,41 @@
+# Render deploy config for the VC Thesis Assistant.
+#
+# The Starter plan ($7/month) keeps the service warm — no cold starts. The 1GB
+# persistent disk ($1/month) survives redeploys, so uploaded firm docs and the
+# SQLite store don't disappear when the service restarts.
+#
+# Deploy:
+# 1. https://render.com → New → Blueprint → connect this repo
+# 2. Render reads this file, prompts you for the env vars marked `sync: false`
+# 3. Paste your ANTHROPIC_API_KEY and a chosen APP_PASSWORD
+# 4. Click Apply
+
+services:
+  - type: web
+    name: vc-thesis-assistant
+    runtime: python
+    plan: starter
+    region: oregon
+    buildCommand: pip install -r requirements.txt
+    startCommand: >
+      streamlit run src/app.py
+      --server.port=$PORT
+      --server.address=0.0.0.0
+      --server.headless=true
+      --server.enableXsrfProtection=false
+      --server.enableCORS=false
+    healthCheckPath: /_stcore/health
+    autoDeploy: true
+    disk:
+      name: vc-thesis-data
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.1
+      - key: DATA_DIR
+        value: /var/data
+      - key: ANTHROPIC_API_KEY
+        sync: false   # set in Render UI; never committed
+      - key: APP_PASSWORD
+        sync: false   # set in Render UI; share with people who should access the app

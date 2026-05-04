@@ -6,6 +6,7 @@ Run with:
 
 from __future__ import annotations
 
+import os
 import sqlite3
 import sys
 from datetime import datetime, timezone
@@ -20,30 +21,57 @@ import anthropic
 import streamlit as st
 from dotenv import load_dotenv
 
-from src.analyze import INSTRUCTIONS as ANALYZE_INSTRUCTIONS, ANALYSES_DIR
-from src.ingest import (
+from src import bootstrap
+from src.analyze import INSTRUCTIONS as ANALYZE_INSTRUCTIONS
+from src.config import (
+    ANALYSES_DIR,
     DB_PATH,
     DOCS_DIR,
-    SUPPORTED_EXTENSIONS,
-    extract,
-    init_db,
+    INCOMING_DECKS_DIR,
+    PROFILE_PATH,
 )
+from src.ingest import SUPPORTED_EXTENSIONS, extract, init_db
 from src.profile import (
     INSTRUCTIONS as PROFILE_INSTRUCTIONS,
-    PROFILE_PATH,
     USER_PROMPT as PROFILE_USER_PROMPT,
     load_corpus,
 )
 
 load_dotenv()
 
-INCOMING_DECKS_DIR = _PROJECT_ROOT / "data" / "incoming_decks"
+# On the first request after a deploy/restart, copy committed example data
+# into DATA_DIR so the deployed demo isn't empty. No-op in local dev.
+bootstrap.run()
 
 st.set_page_config(
     page_title="VC Thesis Assistant",
     page_icon="V",
     layout="wide",
 )
+
+
+def _require_password() -> None:
+    """If APP_PASSWORD is set in the environment, gate the app behind it."""
+    expected = os.environ.get("APP_PASSWORD", "").strip()
+    if not expected:
+        return
+    if st.session_state.get("_authed"):
+        return
+
+    st.title("VC Thesis Assistant")
+    st.caption("Enter the access password to continue.")
+    pw = st.text_input("Password", type="password", key="_pw_input")
+    if pw == "":
+        st.stop()
+    if pw == expected:
+        st.session_state["_authed"] = True
+        st.rerun()
+    else:
+        st.error("Wrong password.")
+        st.stop()
+
+
+_require_password()
 
 
 # ----- helpers -----------------------------------------------------------------

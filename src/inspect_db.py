@@ -7,10 +7,8 @@ Usage:
 from __future__ import annotations
 
 import sqlite3
-from pathlib import Path
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-DB_PATH = PROJECT_ROOT / "data" / "firm.db"
+from src.config import DB_PATH
 
 
 def main() -> None:

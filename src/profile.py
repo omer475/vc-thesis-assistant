@@ -12,16 +12,14 @@ data/firm_profile.md.
 from __future__ import annotations
 
 import sqlite3
-from pathlib import Path
 
 import anthropic
 from dotenv import load_dotenv
 
-load_dotenv()
+from src.config import DB_PATH, PROFILE_PATH, ensure_dirs
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-DB_PATH = PROJECT_ROOT / "data" / "firm.db"
-PROFILE_PATH = PROJECT_ROOT / "data" / "firm_profile.md"
+load_dotenv()
+ensure_dirs()
 
 INSTRUCTIONS = """You are an experienced venture-capital partner reviewing a firm's archive of memos, thesis docs, and pass-reason notes.
 

@@ -18,11 +18,10 @@ from pathlib import Path
 from dotenv import load_dotenv
 from pypdf import PdfReader
 
-load_dotenv()
+from src.config import DATA_DIR, DB_PATH, DOCS_DIR, ensure_dirs
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-DOCS_DIR = PROJECT_ROOT / "data" / "firm_docs"
-DB_PATH = PROJECT_ROOT / "data" / "firm.db"
+load_dotenv()
+ensure_dirs()
 
 SUPPORTED_EXTENSIONS = {".pdf", ".md", ".txt"}
 
