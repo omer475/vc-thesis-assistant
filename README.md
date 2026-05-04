@@ -24,7 +24,22 @@ Early MVP. Building in 5 phases:
 - [x] Phase 5 — Render deploy config (persistent disk, password-gated)
 - [ ] Phase 6 — First design-partner firm onboarded
 
-## Deploy on Render (~$8/month)
+## Deploy: two options
+
+### Free — Streamlit Community Cloud (recommended for demos)
+
+1. https://share.streamlit.io → sign in with GitHub
+2. **New app** → pick this repo, branch `main`, main file path `src/app.py`
+3. Click **Advanced settings** → paste into the "Secrets" box:
+   ```toml
+   ANTHROPIC_API_KEY = "sk-ant-..."
+   APP_PASSWORD = "pick-any-password"
+   ```
+4. **Deploy**. Takes ~2 minutes.
+
+Caveat: Streamlit Cloud's filesystem is ephemeral. The committed example data (Forge Ventures fixtures) is auto-ingested on every restart so the demo always works, but anyone uploading their own firm docs will see them disappear on the next restart. Fine for demos; not for real production use.
+
+### Always-on — Render (~$8/month)
 
 1. https://render.com → sign up with GitHub
 2. New → **Blueprint** → connect this repo

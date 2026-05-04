@@ -17,8 +17,21 @@ _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(_PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(_PROJECT_ROOT))
 
-import anthropic
 import streamlit as st
+
+# Streamlit Cloud stores secrets in st.secrets, not as env vars. Mirror them
+# into os.environ before any module that reads env vars (anthropic SDK, our
+# password gate, etc.) so the same code works on Render, Streamlit Cloud, and
+# locally with .env files — no per-host conditional logic needed.
+try:
+    for _key in list(st.secrets.keys()):
+        _val = st.secrets[_key]
+        if isinstance(_val, str):
+            os.environ.setdefault(_key, _val)
+except Exception:
+    pass  # no secrets file present (typical for local dev with .env)
+
+import anthropic
 from dotenv import load_dotenv
 
 from src import bootstrap

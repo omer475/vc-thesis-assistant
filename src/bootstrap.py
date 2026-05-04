@@ -69,18 +69,28 @@ def _ingest_pending(docs_dir) -> int:
 
 
 def run() -> dict:
-    """Run the boot bootstrap. Returns counts for logging."""
+    """Run the boot bootstrap. Returns counts for logging.
+
+    Idempotent. Behaviors:
+      - Render (DATA_DIR=/var/data, persistent): on first boot, copies the
+        committed example files into the empty disk.
+      - Streamlit Cloud (DATA_DIR defaults to the cloned repo's data/, ephemeral):
+        the example files are already there, but firm.db is gitignored so it
+        starts empty on every restart — we re-ingest from the existing files.
+      - Local dev: example files and firm.db usually both exist; the ingest is
+        a safe no-op because of UNIQUE(filename) on the documents table.
+    """
     ensure_dirs()
 
-    if not is_running_in_production():
-        return {"skipped": "local dev — DATA_DIR is the repo data/ dir"}
-
-    docs_copied = _copy_files_if_target_empty(
-        EXAMPLE_DATA_DIR / "firm_docs", DOCS_DIR
-    )
-    decks_copied = _copy_files_if_target_empty(
-        EXAMPLE_DATA_DIR / "incoming_decks", INCOMING_DECKS_DIR
-    )
+    docs_copied = 0
+    decks_copied = 0
+    if is_running_in_production():
+        docs_copied = _copy_files_if_target_empty(
+            EXAMPLE_DATA_DIR / "firm_docs", DOCS_DIR
+        )
+        decks_copied = _copy_files_if_target_empty(
+            EXAMPLE_DATA_DIR / "incoming_decks", INCOMING_DECKS_DIR
+        )
 
     ingested = _ingest_pending(DOCS_DIR)
 
@@ -88,6 +98,7 @@ def run() -> dict:
         "docs_copied": docs_copied,
         "decks_copied": decks_copied,
         "documents_ingested": ingested,
+        "is_production": is_running_in_production(),
     }
 
 
