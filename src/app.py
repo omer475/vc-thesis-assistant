@@ -35,7 +35,7 @@ import anthropic
 from dotenv import load_dotenv
 
 from src import bootstrap
-from src.analyze import INSTRUCTIONS as ANALYZE_INSTRUCTIONS
+from src.analyze import analyze_deck
 from src.config import (
     ANALYSES_DIR,
     DB_PATH,
@@ -199,8 +199,14 @@ def stream_profile_generation():
         }
 
 
-def stream_deal_analysis(deck_path: Path):
-    """Generator that streams the deal-analysis memo. Saves to data/analyses/."""
+def run_deal_analysis(
+    deck_path: Path, streaming_placeholder
+) -> dict:
+    """Run analyze_deck() with live streaming into the given Streamlit placeholder.
+
+    Saves both the full memo and the triage block to disk, populates session
+    state with the structured result, and returns it.
+    """
     deck_text = deck_path.read_text(encoding="utf-8")
     profile_text = PROFILE_PATH.read_text(encoding="utf-8")
 
@@ -208,56 +214,91 @@ def stream_deal_analysis(deck_path: Path):
     corpus = load_corpus(conn)
     conn.close()
 
-    client = anthropic.Anthropic()
     chunks: list[str] = []
-    final_message = None
 
-    with client.messages.stream(
-        model="claude-opus-4-7",
-        max_tokens=16000,
-        thinking={"type": "adaptive"},
-        system=[
-            {"type": "text", "text": ANALYZE_INSTRUCTIONS},
-            {
-                "type": "text",
-                "text": (
-                    f"<firm_profile>\n{profile_text}\n</firm_profile>\n\n"
-                    f"<firm_corpus>\n{corpus}\n</firm_corpus>"
-                ),
-                "cache_control": {"type": "ephemeral"},
-            },
-        ],
-        messages=[
-            {
-                "role": "user",
-                "content": (
-                    f'<new_deck filename="{deck_path.name}">\n'
-                    f"{deck_text}\n"
-                    f"</new_deck>\n\n"
-                    "Produce the fit memo now, exactly per the instructions."
-                ),
-            }
-        ],
-    ) as stream:
-        for text in stream.text_stream:
-            chunks.append(text)
-            yield text
-        final_message = stream.get_final_message()
+    def on_chunk(text: str) -> None:
+        chunks.append(text)
+        streaming_placeholder.markdown("".join(chunks))
 
-    memo_text = "".join(chunks)
+    result = analyze_deck(
+        deck_text=deck_text,
+        deck_filename=deck_path.name,
+        profile_text=profile_text,
+        corpus_text=corpus,
+        stream_callback=on_chunk,
+    )
+
     ANALYSES_DIR.mkdir(parents=True, exist_ok=True)
-    out_path = ANALYSES_DIR / f"{deck_path.stem}.memo.md"
-    out_path.write_text(memo_text)
+    memo_path = ANALYSES_DIR / f"{deck_path.stem}.memo.md"
+    triage_path = ANALYSES_DIR / f"{deck_path.stem}.triage.md"
+    memo_path.write_text(result["full_memo_md"])
+    triage_path.write_text(result["triage_md"])
 
-    if final_message:
-        usage = final_message.usage
-        st.session_state["last_analysis_usage"] = {
-            "input": usage.input_tokens,
-            "cache_write": usage.cache_creation_input_tokens,
-            "cache_read": usage.cache_read_input_tokens,
-            "output": usage.output_tokens,
-        }
-        st.session_state["last_memo_path"] = out_path
+    st.session_state["last_analysis"] = result
+    st.session_state["last_deck_path"] = str(deck_path)
+    st.session_state["last_memo_path"] = str(memo_path)
+
+    return result
+
+
+def render_triage(result: dict, deck_path: Path | None) -> None:
+    """Render the structured triage layout for a completed analysis.
+
+    Layout (top → bottom):
+      - colored verdict badge
+      - WHY bullets
+      - ASK FIRST questions (only if verdict == 'Ask first')
+      - full-memo expander (deep dive)
+      - token-usage caption
+      - download button
+    """
+    verdict = result.get("verdict", "Unknown")
+
+    if verdict == "Take meeting":
+        st.success("##### VERDICT — Take meeting")
+    elif verdict == "Pass":
+        st.error("##### VERDICT — Pass")
+    elif verdict == "Ask first":
+        st.warning("##### VERDICT — Ask first")
+    else:
+        st.info(f"##### VERDICT — {verdict}")
+
+    st.markdown("**Why**")
+    bullets = result.get("bullets") or []
+    if bullets:
+        for b in bullets:
+            st.markdown(f"- {b.get('text', '')}")
+    else:
+        st.caption("(no bullets parsed)")
+
+    questions = result.get("questions")
+    if questions:
+        st.markdown("**Ask first**")
+        for i, q in enumerate(questions, 1):
+            st.markdown(f"{i}. {q}")
+
+    full_memo = result.get("full_memo_md", "")
+    if full_memo:
+        with st.expander("Full memo — deeper analysis", expanded=False):
+            st.markdown(full_memo)
+
+    usage = result.get("usage") or {}
+    if usage:
+        st.caption(
+            f"Tokens — input: {usage.get('input_tokens', 0):,}  ·  "
+            f"cache read: {usage.get('cache_read_input_tokens', 0):,}  ·  "
+            f"cache write: {usage.get('cache_creation_input_tokens', 0):,}  ·  "
+            f"output: {usage.get('output_tokens', 0):,}  ·  "
+            f"latency: {usage.get('latency_ms', 0):,} ms"
+        )
+
+    if deck_path and full_memo:
+        st.download_button(
+            "Download full memo (.md)",
+            data=full_memo,
+            file_name=f"{Path(deck_path).stem}.memo.md",
+            mime="text/markdown",
+        )
 
 
 # ----- UI ---------------------------------------------------------------------
@@ -416,21 +457,14 @@ with tab_analyze:
 
             if st.button("Analyze this deck", type="primary"):
                 with st.spinner("Reading the deck and writing the memo..."):
-                    placeholder = st.empty()
-                    placeholder.write_stream(stream_deal_analysis(target_deck_path))
-                usage = st.session_state.get("last_analysis_usage")
-                if usage:
-                    st.caption(
-                        f"Tokens — input: {usage['input']:,} | "
-                        f"cache write: {usage['cache_write']:,} | "
-                        f"cache read: {usage['cache_read']:,} | "
-                        f"output: {usage['output']:,}"
-                    )
-                memo_path = st.session_state.get("last_memo_path")
-                if memo_path:
-                    st.download_button(
-                        "Download memo (.md)",
-                        data=Path(memo_path).read_text(),
-                        file_name=Path(memo_path).name,
-                        mime="text/markdown",
-                    )
+                    streaming_placeholder = st.empty()
+                    run_deal_analysis(target_deck_path, streaming_placeholder)
+                    streaming_placeholder.empty()
+
+        if "last_analysis" in st.session_state:
+            st.divider()
+            stored_deck = st.session_state.get("last_deck_path")
+            render_triage(
+                st.session_state["last_analysis"],
+                Path(stored_deck) if stored_deck else None,
+            )

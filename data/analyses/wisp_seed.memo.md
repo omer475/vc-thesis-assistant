@@ -1,33 +1,33 @@
 ## Fit summary
-**Borderline, leaning take-the-meeting.** Wisp is a broad consumer social network — a category Forge explicitly stepped back from after 2015 ("it became harder for newer entrants, newer broad consumer networks, to gain scale"). But the deck has three things that map cleanly onto current thesis: real network-effect dynamics, a "broaden access… well-being / connection / community" hook from Thesis 3.0, and traction metrics that look closer to Thesis 1.0 winners than to the dead consumer-social pile.
+Borderline-fit consumer social where the deck's headline retention numbers, if real, would justify a meeting — but they're unverified, and the entire investment case rests on them. The firm's 2018 thesis explicitly includes "entertainment, connection, community, and fun" under well-being, so this isn't off-thesis. But the 2015 memo is candid that broad consumer networks are structurally harder now, which raises the bar on proof. We owe ourselves the cohort data before spending partner time.
 
 ## Where it maps to our thesis
-- **"Defensible through network effects"** (Thesis 1.0) — Wisp is a closed-graph friend network where value compounds with friends added; this is the original Forge filter, applied to voice.
-- **"Well-being… entertainment, connection, community, and fun"** (Thesis 3.0) — explicit Forge language for what Wisp is selling: low-pressure connection vs. performative video.
-- **"Products that enable new behavior, create new forms of access, and inspire users will generate outsized value"** (Four Futures, 2024) — voice-first ephemeral as a new behavior pattern, not a feature on top of an existing one.
-- **"Network Effect Applications" quadrant** (Four Futures) — consumer apps with user/data network effects is named as one of four AI-era bets Forge will hedge into; voice content is a natural surface for AI features later (effects, transcription, agentic replies).
-- **"Differentiated by user experience"** (Thesis 1.0) — voice-as-primary-medium is a genuine UX bet, comparable to Foursquare's check-in or Snapchat's ephemerality.
+- **2018 framing — broadened access to well-being.** The 2018 memo defines well-being as including "entertainment, connection, community, and fun." A close-friends voice network sits squarely in "connection" and "community."
+- **2012 framing — large networks defensible through network effects.** The pitch is canonical Thesis 1.0: "large networks of engaged users, differentiated by user experience, and defensible through network effects." The deck's 30-second-voice + ephemeral-by-default UX claim is a user-experience differentiator; the question is whether the network effect is real at small-group scale.
+- **2015 caveat.** The firm explicitly noted that "it became harder — and it's still hard — for newer entrants, newer broad consumer networks, to gain scale." Wisp is exactly the kind of bet 2015 warned would be hard — but didn't say to stop making.
+- **Trusted brands.** The 2018 memo emphasizes that "trust comes from true alignment." Ephemeral + close-friends + no public posting is a coherent trust-aligned product stance, if the founders can articulate it.
 
 ## Comparable past deals
-- **Snapchat (passed, archive).** Most direct analogue: ephemeral, friends-only, Gen Z, mobile-native. Forge's lesson was a logistics failure, but the *underlying* pattern — small-graph ephemeral messaging that looks like a feature and turns into a network — is exactly Wisp's bet. Difference: voice instead of camera; smaller current scale than Snapchat at equivalent stage.
-- **Foursquare (portfolio).** Same Thesis-1.0 archetype: a novel native interaction (check-in / voice clip) that anchors a consumer network. Difference: Wisp's medium has stronger pre-existing behavioral evidence (voice-note explosion in iMessage/WhatsApp) than check-ins did in 2009.
-- **Tumblr / SoundCloud (portfolio).** Audio-first / expression-first consumer networks. Wisp is closer to messaging than publishing, but the "new medium → new network" thesis is the same.
-- **Facebook (passed, archive).** Cautionary: the laziest pass we ever wrote was "haven't you heard of Friendster?" The equivalent here would be "haven't you heard of Clubhouse / BeReal / Snapchat audio?" — different graph density, different behavior, doesn't disqualify.
+- **Snapchat (passed, archive).** Closest analog: ephemeral, mobile-native, close-friends. We coin-flipped our way out of meeting Spiegel in 2011. The lesson here isn't "say yes to anything that looks like Snap" — it's that we cannot use Snap's existence as a reason to dismiss Wisp.
+- **Foursquare (portfolio, Thesis 1.0).** Novel native UX (the check-in) on a small-group social graph. We backed it on UX differentiation and graph quality, not scale at the time. Wisp's voice-clip primitive is a comparable UX bet. Foursquare's eventual ceiling is also a cautionary note.
+- **Twitter/Tumblr (portfolio, Thesis 1.0).** The original "large networks" wins. Different shape — public broadcast, not close-friend — but the bar Wisp would need to clear to be a fund-returner is in this neighborhood.
+- **Facebook (passed, archive).** Passed on "haven't you heard of Friendster?" The lesson — "an incumbent already exists is not a sufficient reason to pass on a product that targets a different user behavior or different graph density" — is directly relevant: Wisp's ephemeral-voice + close-friends graph is a different graph density than Snap's.
 
 ## Red flags
-1. **Monetization deferred and vague** ("paid premium tier… then maybe ads later"). Real concern given pre-revenue + consumer social. *But:* Kayak and Instacart are in our archive precisely because we killed marketplaces over the first monetization path. **Suppress the strong form of this flag**; ask the question, don't make it a blocker.
-2. **Consumer social fad risk.** Audio-first social has a graveyard (Clubhouse, Anchor consumer, Capsule, Airtime). The specific risk isn't "crowded" — it's that voice-first standalone networks have *repeatedly* failed to retain post-novelty. Wisp's D30 of 19% is a real counter-data point but needs to be stress-tested against cohort decay.
-3. **52K MAU is small and the curve is short.** Six months of data, mostly organic — could be a single-college contagion that doesn't generalize. We don't have visibility into geographic/school concentration.
-4. **"Crowded market" temptation re: Snapchat, iMessage voice notes, WhatsApp voice notes.** This is *literally* the laziest pass reason in our archive (Zoom, Facebook). **Suppress.** The right question isn't "does voice-note behavior exist elsewhere" — it obviously does, that's the wedge — it's "does a standalone graph form around it."
-5. **Founders from incumbents, $20M post on 52K MAU.** The valuation will feel rich. Per Airbnb/Atlassian/Apple lessons: **suppress price-anchoring**. Model the curve at 15% MoM compounding for 12 months and re-ask.
+1. **Retention is self-reported with no cohort breakdown.** 19% D30 sounds best-in-class, but absent cohort curves, we cannot tell if newer cohorts are decaying faster than older ones, or if power users are masking the median.
+2. **Growth attribution is unspecified.** "15% MoM organic" is asserted without breakdown of source — paid, viral K-factor, single-creator seeding, or PR-driven.
+3. **Pre-revenue with vague monetization.** "Premium tier, then maybe ads later" is hand-wavy. For consumer social this is somewhat normal at seed, but per the Kayak lesson we should still model 2–3 plausible monetization paths to test which the product shape actually supports.
+4. **Two-person founding team, both PM/eng from incumbents, no obvious design or community lead.** A consumer-social product whose differentiation is UX and feel typically wants a strong design partner from day zero.
+5. **iOS-only at 52K MAU may be hiding a ceiling.** Either the iOS-college demographic is the entire market and Android won't add much, or Android opens a step-change — the deck doesn't argue either case.
+6. **SUPPRESSED: "Snapchat / Discord / iMessage already do voice notes."** This is the archive's flagged anti-pattern. Not raised here. Same with "valuation feels rich at $20M post on $0 revenue" — see Airbnb lesson.
 
 ## Questions for the founder
-1. **Cohort retention curves, not aggregates.** Is D30 19% holding for the *most recent* cohorts, or is it propped up by an early power-user cohort? Show us the layer cake.
-2. **Graph density.** Median number of friends per active user, and what's the activation threshold below which retention collapses? (This is the load-bearing network-effect question.)
-3. **Concentration.** What percent of MAU comes from the top 3 colleges/cities? If we strip those, what does growth look like?
-4. **Why standalone, not a feature?** iMessage and WhatsApp already host most voice-note behavior. What's the specific reason a 17-year-old opens Wisp instead of sending a voice note in the group chat she's already in?
-5. **Jenna's view from inside Meta.** What did Reels' data tell her about voice/audio engagement that Meta isn't acting on, and why won't Meta ship this as a feature in 12 months?
-6. **Monetization optionality.** Beyond premium and ads, what are 2–3 paths you've considered (creator tools, gifting, B2B voice infra)? We're not asking you to pick one — we want to see you've enumerated them.
+1. Send the full cohort retention table (signup-month cohorts × D1/D7/D30/D60/D90). What does the most recent cohort look like vs. six months ago?
+2. Decompose 15% MoM growth: % paid, % invited-by-existing-user (K-factor), % attributable to specific creator/PR moments. What's the K-factor by cohort?
+3. Graph density: median sends per active user per week, median recipients per send, % of D30 users who send (not just listen), distribution of close-friend group sizes.
+4. What user research convinced you a *standalone app* beats voice-notes-inside-iMessage / Discord / Snap? What's the wedge that keeps a 16-year-old opening Wisp specifically?
+5. Why ephemeral 24-hour expiry rather than persistent? Have you A/B tested? What does retention look like in a non-ephemeral cohort if one exists?
+6. On monetization: in a world where ads don't work for a small-friends-only product (no public surface), what's the realistic ceiling on premium-tier conversion, and what comparable consumer-social premium products are you benchmarking against?
 
 ## Recommendation
-**Take the meeting** — the retention numbers and the Thesis-1.0/3.0 fit clear the bar to spend an hour, and our archive is unambiguous that "crowded consumer social" and "no monetization yet" are exactly the wrong reasons to pass at seed.
+Hold the meeting until we see cohort curves, growth attribution, and graph-density data — those three answers individually flip our verdict, so they belong before the meeting, not in it.
