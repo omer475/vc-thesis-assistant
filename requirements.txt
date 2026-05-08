@@ -1,5 +1,6 @@
 anthropic>=0.40.0
 python-dotenv>=1.0.0
 pypdf>=4.0.0
-streamlit>=1.40.0
+streamlit>=1.40.0,<2
+streamlit-option-menu>=0.3.12
 supabase>=2.7.0

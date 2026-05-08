@@ -49,6 +49,7 @@ from src.analyze import run_analysis
 from src.config import INCOMING_DECKS_DIR
 from src.ingest import SUPPORTED_EXTENSIONS
 from src.profile import generate_profile
+from src.styles import inject_global_css, inject_public_mode_css
 
 load_dotenv()
 
@@ -117,6 +118,8 @@ def render_public_deal_page(analysis_id: str) -> None:
         layout="centered",
         initial_sidebar_state="collapsed",
     )
+    inject_global_css()
+    inject_public_mode_css()
 
     analysis = db.get_analysis(analysis_id)
     if not analysis:
@@ -168,6 +171,7 @@ st.set_page_config(
     page_icon="V",
     layout="wide",
 )
+inject_global_css()
 
 
 def _require_password() -> None:
