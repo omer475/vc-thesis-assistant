@@ -1,6 +1,6 @@
 VERDICT: Take meeting
 
 WHY:
-• Vertical legal play replays Casetext, our prior bet on this category, as a "less obvious network effects" thesis (02_firm_thesis_v2_2015.md).
-• Vertical AI moat fits the Four Futures call that "data is more specific and targeted than in generalist models" (04_firm_thesis_four_futures_2024.md).
-• Mid-market wedge mirrors our 2018 thesis on "trusted brands that broaden access to knowledge, capital, and well-being" (03_firm_thesis_v3_2018.md).
+• Vertical legal network with a data-flywheel moat replays Casetext, fitting our 2015 turn toward "less obvious network effects" (02_firm_thesis_v2_2015.md).
+• Defensible vertical AI thesis directly maps — Four Futures argues "vertical players can defend a moat that horizontal ones can't" (04_firm_thesis_four_futures_2024.md).
+• Mid-market wedge extends senior-associate quality to firms priced out — squarely "trusted brands that broaden access to knowledge" (03_firm_thesis_v3_2018.md).
