@@ -1,22 +1,22 @@
-"""Generate a structured profile of the firm's investment strategy from the
-documents stored in data/firm.db.
+"""Generate the firm's strategy profile from its document corpus.
 
-Usage:
+CLI:
     python -m src.profile
 
-Reads every document from the local SQLite store, sends them to Claude with
-prompt caching enabled, and writes the resulting profile to
-data/firm_profile.md.
+Reads every document from Supabase, sends them to Claude with prompt caching
+enabled, writes the resulting profile to `firms.profile_md` (DB), and also
+writes a convenience copy to `data/firm_profile.md`.
 """
 
 from __future__ import annotations
 
-import sqlite3
+from typing import Any, Callable
 
 import anthropic
 from dotenv import load_dotenv
 
-from src.config import DB_PATH, PROFILE_PATH, ensure_dirs
+from src import db
+from src.config import PROFILE_PATH, ensure_dirs
 
 load_dotenv()
 ensure_dirs()
@@ -42,32 +42,25 @@ Write the profile as if it will be loaded into another tool that uses it to eval
 USER_PROMPT = "Produce the firm profile now, structured exactly as the instructions specify."
 
 
-def load_corpus(conn: sqlite3.Connection) -> str:
-    rows = conn.execute(
-        "SELECT filename, content FROM documents ORDER BY filename"
-    ).fetchall()
-    parts = [f"=== {filename} ===\n\n{content}" for filename, content in rows]
-    return "\n\n---\n\n".join(parts)
+def generate_profile(
+    firm_id: str,
+    *,
+    stream_callback: Callable[[str], None] | None = None,
+    write_disk: bool = True,
+    client: anthropic.Anthropic | None = None,
+) -> dict[str, Any]:
+    """Run profile generation. Updates `firms.profile_md` and (optionally) disk.
 
+    Returns: {profile_md, usage}
+    """
+    corpus = db.assemble_corpus(firm_id)
+    if not corpus.strip():
+        raise RuntimeError(
+            "Firm has no documents. Ingest at least one before generating a profile."
+        )
 
-def main() -> None:
-    if not DB_PATH.exists():
-        print("No documents ingested yet. Run `python -m src.ingest` first.")
-        return
-
-    conn = sqlite3.connect(DB_PATH)
-    corpus = load_corpus(conn)
-    conn.close()
-
-    if not corpus:
-        print("No documents in database. Add docs to data/firm_docs/ and run ingest.")
-        return
-
-    print(f"Loaded {len(corpus):,} chars of firm documents from {DB_PATH.name}")
-    print("Asking Claude to distill the firm's strategy. This may take ~30s...\n")
-    print("---")
-
-    client = anthropic.Anthropic()
+    client = client or anthropic.Anthropic()
+    chunks: list[str] = []
 
     with client.messages.stream(
         model="claude-opus-4-7",
@@ -84,19 +77,55 @@ def main() -> None:
         messages=[{"role": "user", "content": USER_PROMPT}],
     ) as stream:
         for text in stream.text_stream:
-            print(text, end="", flush=True)
+            chunks.append(text)
+            if stream_callback is not None:
+                stream_callback(text)
         message = stream.get_final_message()
 
-    print("\n---\n")
-    usage = message.usage
-    print(f"Tokens   input: {usage.input_tokens:,}   "
-          f"cache write: {usage.cache_creation_input_tokens:,}   "
-          f"cache read: {usage.cache_read_input_tokens:,}   "
-          f"output: {usage.output_tokens:,}")
+    profile_text = "".join(chunks)
 
-    profile_text = "\n".join(b.text for b in message.content if b.type == "text")
-    PROFILE_PATH.write_text(profile_text)
-    print(f"Saved firm profile → {PROFILE_PATH}")
+    db.update_firm_profile(firm_id, profile_text)
+    if write_disk:
+        PROFILE_PATH.write_text(profile_text)
+
+    return {
+        "profile_md": profile_text,
+        "usage": {
+            "input_tokens": message.usage.input_tokens,
+            "output_tokens": message.usage.output_tokens,
+            "cache_read_input_tokens": message.usage.cache_read_input_tokens,
+            "cache_creation_input_tokens": message.usage.cache_creation_input_tokens,
+        },
+    }
+
+
+def main() -> None:
+    firm = db.get_or_create_default_firm()
+    print(f"Firm: {firm['name']} ({firm['slug']})")
+
+    n_docs = db.count_documents(firm["id"])
+    if n_docs == 0:
+        print("No documents in corpus. Run `python -m src.ingest` first.")
+        return
+    total_chars = db.total_corpus_chars(firm["id"])
+    print(f"Corpus: {n_docs} documents, {total_chars:,} chars")
+    print("Asking Claude to distill the firm's strategy. This may take ~30s...\n")
+    print("---")
+
+    def _print_chunk(text: str) -> None:
+        print(text, end="", flush=True)
+
+    result = generate_profile(firm["id"], stream_callback=_print_chunk)
+
+    print("\n---\n")
+    usage = result["usage"]
+    print(
+        f"Tokens   input: {usage['input_tokens']:,}   "
+        f"cache write: {usage['cache_creation_input_tokens']:,}   "
+        f"cache read: {usage['cache_read_input_tokens']:,}   "
+        f"output: {usage['output_tokens']:,}"
+    )
+    print(f"Saved firm profile to firms.profile_md and {PROFILE_PATH}")
 
 
 if __name__ == "__main__":

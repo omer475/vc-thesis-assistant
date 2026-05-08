@@ -14,15 +14,22 @@ We use **retrieval-augmented generation** (the system looks up relevant past mem
 
 ## Status
 
-Early MVP. Building in 5 phases:
+Phase 1 (per `BRIEF.md`) in progress:
 
-- [x] Phase 0 — Project skeleton
-- [x] Phase 1 — Document reader + local SQLite store (.pdf, .md, .txt)
-- [x] Phase 2 — Firm-profile generator (Claude Opus 4.7, prompt-cached)
-- [x] Phase 3 — Deal-analysis pipeline
-- [x] Phase 4 — Streamlit web UI
-- [x] Phase 5 — Render deploy config (persistent disk, password-gated)
-- [ ] Phase 6 — First design-partner firm onboarded
+- [x] Step 1 — Triage output format (verdict + cited bullets + full memo)
+- [x] Step 2 — Supabase Postgres migration (data persists across restarts)
+- [ ] Step 3 — Public deal-link pages
+- [ ] Step 4 — Affinity connector
+- [ ] Step 5 — Admin polish (six-tab structure, analytics)
+
+## Architecture
+
+- **Database:** Supabase Postgres (single source of truth for firms, documents, decks, analyses, pass reasons).
+- **LLM:** Claude Opus 4.7 via the `anthropic` SDK with adaptive thinking and prompt caching.
+- **Web UI:** Streamlit (admin app + public deal pages once Step 3 lands).
+- **Hosting:** Streamlit Community Cloud (free tier).
+
+Schema lives at `supabase/migrations/0001_init.sql`. CLI scripts (`src/ingest.py`, `src/profile.py`, `src/analyze.py`, `src/inspect_db.py`) and the Streamlit app (`src/app.py`) all share a single DB layer in `src/db.py` — no module imports the Supabase client directly.
 
 ## Deploy: two options
 

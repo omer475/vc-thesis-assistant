@@ -4,25 +4,25 @@ Produces two artifacts in one Claude call:
 
   1) A compact TRIAGE BLOCK — verdict + 3 reasoning bullets (with inline
      citations to the firm's own docs) + optional 3 follow-up questions.
-     This is the email-reply payload.
-  2) A FULL MEMO — the deeper analysis, accessed via link.
+     This is the email-reply payload (Phase 2).
+  2) A FULL MEMO — the deeper analysis, accessed via the public deal-link.
 
 CLI:
     python -m src.analyze data/incoming_decks/<deck_filename>
     → writes data/analyses/<stem>.memo.md  (full memo)
             data/analyses/<stem>.triage.md (triage block only)
+    → also persists a `decks` row + an `analyses` row in Supabase.
 
 Library:
-    from src.analyze import analyze_deck
-    result = analyze_deck(deck_text, deck_filename, profile_text, corpus_text)
+    from src.analyze import run_analysis
+    result = run_analysis(firm_id, deck_text, deck_filename)
     # result is a dict: {verdict, bullets, questions, full_memo_md,
-    #                    triage_md, raw_response, usage}
+    #                    triage_md, deck_id, analysis_id, usage, ...}
 """
 
 from __future__ import annotations
 
 import re
-import sqlite3
 import sys
 import time
 from pathlib import Path
@@ -31,7 +31,8 @@ from typing import Any, Callable
 import anthropic
 from dotenv import load_dotenv
 
-from src.config import ANALYSES_DIR, DB_PATH, PROFILE_PATH, ensure_dirs
+from src import db
+from src.config import ANALYSES_DIR, ensure_dirs
 
 load_dotenv()
 ensure_dirs()
@@ -333,12 +334,68 @@ def analyze_deck(
     return parsed
 
 
-def load_corpus(conn: sqlite3.Connection) -> str:
-    rows = conn.execute(
-        "SELECT filename, content FROM documents ORDER BY filename"
-    ).fetchall()
-    parts = [f"=== {filename} ===\n\n{content}" for filename, content in rows]
-    return "\n\n---\n\n".join(parts)
+def run_analysis(
+    firm_id: str,
+    deck_text: str,
+    deck_filename: str,
+    *,
+    source: str = "upload",
+    subject: str | None = None,
+    partner_id: str | None = None,
+    stream_callback: Callable[[str], None] | None = None,
+    write_disk: bool = True,
+) -> dict[str, Any]:
+    """Full analyze pipeline: load context from DB → analyze → persist.
+
+    Returns the parsed analysis dict, augmented with `deck_id` and
+    `analysis_id` for downstream linking.
+    """
+    profile_text = db.get_firm_profile(firm_id) or ""
+    if not profile_text:
+        raise RuntimeError(
+            "Firm has no profile. Run `python -m src.profile` (or click "
+            "Generate profile in the admin app) before analyzing decks."
+        )
+    corpus_text = db.assemble_corpus(firm_id)
+    if not corpus_text.strip():
+        raise RuntimeError("Firm has no documents — cannot analyze.")
+
+    deck_row = db.insert_deck(
+        firm_id,
+        source=source,
+        content=deck_text,
+        original_filename=deck_filename,
+        subject=subject,
+        partner_id=partner_id,
+    )
+
+    result = analyze_deck(
+        deck_text=deck_text,
+        deck_filename=deck_filename,
+        profile_text=profile_text,
+        corpus_text=corpus_text,
+        stream_callback=stream_callback,
+    )
+
+    analysis_row = db.insert_analysis(
+        deck_row["id"],
+        verdict=result["verdict"],
+        bullets=result["bullets"],
+        questions=result["questions"],
+        full_memo_md=result["full_memo_md"],
+        usage=result.get("usage"),
+    )
+
+    result["deck_id"] = deck_row["id"]
+    result["analysis_id"] = analysis_row["id"]
+
+    if write_disk:
+        ANALYSES_DIR.mkdir(parents=True, exist_ok=True)
+        stem = Path(deck_filename).stem
+        (ANALYSES_DIR / f"{stem}.memo.md").write_text(result["full_memo_md"])
+        (ANALYSES_DIR / f"{stem}.triage.md").write_text(result["triage_md"])
+
+    return result
 
 
 # ----- CLI ----------------------------------------------------------------
@@ -354,35 +411,29 @@ def main() -> None:
         print(f"Deck not found: {deck_path}")
         sys.exit(1)
 
-    if not DB_PATH.exists():
+    firm = db.get_or_create_default_firm()
+    if db.count_documents(firm["id"]) == 0:
         print("No firm corpus yet. Run `python -m src.ingest` first.")
         sys.exit(1)
-
-    if not PROFILE_PATH.exists():
+    if not db.get_firm_profile(firm["id"]):
         print("No firm profile yet. Run `python -m src.profile` first.")
         sys.exit(1)
 
     deck_text = deck_path.read_text(encoding="utf-8")
-    profile_text = PROFILE_PATH.read_text(encoding="utf-8")
 
-    conn = sqlite3.connect(DB_PATH)
-    corpus = load_corpus(conn)
-    conn.close()
-
+    print(f"Firm:      {firm['name']} ({firm['slug']})")
     print(f"Analyzing: {deck_path.name}")
-    print(f"  corpus:  {len(corpus):,} chars")
-    print(f"  profile: {len(profile_text):,} chars")
-    print(f"  deck:    {len(deck_text):,} chars")
+    print(f"  deck: {len(deck_text):,} chars")
     print("\n--- response (streaming) ---\n")
 
     def _print_chunk(text: str) -> None:
         print(text, end="", flush=True)
 
-    result = analyze_deck(
+    result = run_analysis(
+        firm["id"],
         deck_text=deck_text,
         deck_filename=deck_path.name,
-        profile_text=profile_text,
-        corpus_text=corpus,
+        source="upload",
         stream_callback=_print_chunk,
     )
 
@@ -410,13 +461,9 @@ def main() -> None:
         f"latency: {usage['latency_ms']:,}ms"
     )
 
-    ANALYSES_DIR.mkdir(parents=True, exist_ok=True)
-    memo_path = ANALYSES_DIR / f"{deck_path.stem}.memo.md"
-    triage_path = ANALYSES_DIR / f"{deck_path.stem}.triage.md"
-    memo_path.write_text(result["full_memo_md"])
-    triage_path.write_text(result["triage_md"])
-    print(f"\nSaved memo   → {memo_path}")
-    print(f"Saved triage → {triage_path}")
+    print(f"\nDeck:     decks.id     = {result['deck_id']}")
+    print(f"Analysis: analyses.id  = {result['analysis_id']}")
+    print(f"Files:    data/analyses/{deck_path.stem}.{{memo,triage}}.md")
 
 
 if __name__ == "__main__":

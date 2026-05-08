@@ -2,14 +2,17 @@
 
 Run with:
     streamlit run src/app.py
+
+After Step 2 of Phase 1: all firm/deck/analysis data lives in Supabase.
+Local files in `data/` are committed example fixtures (auto-seeded into
+the DB on first boot) and convenience exports for CLI users.
 """
 
 from __future__ import annotations
 
 import os
-import sqlite3
 import sys
-from datetime import datetime, timezone
+from io import BytesIO
 from pathlib import Path
 
 # Ensure the project root is on sys.path so `from src...` works when streamlit runs this file.
@@ -20,9 +23,9 @@ if str(_PROJECT_ROOT) not in sys.path:
 import streamlit as st
 
 # Streamlit Cloud stores secrets in st.secrets, not as env vars. Mirror them
-# into os.environ before any module that reads env vars (anthropic SDK, our
-# password gate, etc.) so the same code works on Render, Streamlit Cloud, and
-# locally with .env files — no per-host conditional logic needed.
+# into os.environ before any module that reads env vars (anthropic SDK,
+# supabase client, our password gate) so the same code runs on Streamlit
+# Cloud and locally with .env files — no per-host conditional logic.
 try:
     for _key in list(st.secrets.keys()):
         _val = st.secrets[_key]
@@ -31,30 +34,22 @@ try:
 except Exception:
     pass  # no secrets file present (typical for local dev with .env)
 
-import anthropic
 from dotenv import load_dotenv
+from pypdf import PdfReader
 
-from src import bootstrap
-from src.analyze import analyze_deck
-from src.config import (
-    ANALYSES_DIR,
-    DB_PATH,
-    DOCS_DIR,
-    INCOMING_DECKS_DIR,
-    PROFILE_PATH,
-)
-from src.ingest import SUPPORTED_EXTENSIONS, extract, init_db
-from src.profile import (
-    INSTRUCTIONS as PROFILE_INSTRUCTIONS,
-    USER_PROMPT as PROFILE_USER_PROMPT,
-    load_corpus,
-)
+from src import bootstrap, db
+from src.analyze import run_analysis
+from src.config import INCOMING_DECKS_DIR
+from src.ingest import SUPPORTED_EXTENSIONS
+from src.profile import generate_profile
 
 load_dotenv()
 
-# On the first request after a deploy/restart, copy committed example data
-# into DATA_DIR so the deployed demo isn't empty. No-op in local dev.
-bootstrap.run()
+# First request after a deploy: ensure the default firm exists in Supabase
+# and seed example fixtures on first boot. Idempotent on every subsequent run.
+_boot_info = bootstrap.run()
+FIRM_ID: str = _boot_info["firm_id"]
+
 
 st.set_page_config(
     page_title="VC Thesis Assistant",
@@ -89,169 +84,78 @@ _require_password()
 
 # ----- helpers -----------------------------------------------------------------
 
-def get_corpus_summary() -> tuple[int, int]:
-    """Return (doc_count, total_chars) from the SQLite store."""
-    if not DB_PATH.exists():
-        return 0, 0
-    conn = sqlite3.connect(DB_PATH)
+
+def extract_uploaded_file(uploaded_file) -> tuple[str, int]:
+    """Extract text from a Streamlit UploadedFile in memory (no disk write).
+
+    Returns (text, page_count). Streamlit Cloud's filesystem is ephemeral, so
+    persisting uploads to disk has no value — the source of truth is Supabase.
+    """
+    name = uploaded_file.name
+    suffix = Path(name).suffix.lower()
+    if suffix == ".pdf":
+        reader = PdfReader(BytesIO(uploaded_file.getvalue()))
+        pages = [(p.extract_text() or "") for p in reader.pages]
+        return "\n\n".join(pages).strip(), len(reader.pages)
+    if suffix in {".md", ".txt"}:
+        text = uploaded_file.getvalue().decode("utf-8", errors="replace").strip()
+        return text, max(1, text.count("\n\n") // 5 + 1)
+    raise ValueError(f"Unsupported file type: {suffix}")
+
+
+def ingest_uploaded_file(uploaded_file) -> tuple[bool, str]:
+    """Extract + insert one uploaded file into the firm's corpus.
+    Returns (success, message).
+    """
     try:
-        row = conn.execute(
-            "SELECT COUNT(*), COALESCE(SUM(LENGTH(content)), 0) FROM documents"
-        ).fetchone()
-        return int(row[0]), int(row[1])
-    except sqlite3.OperationalError:
-        return 0, 0
-    finally:
-        conn.close()
-
-
-def list_corpus_documents() -> list[tuple[int, str, int, int, str]]:
-    if not DB_PATH.exists():
-        return []
-    conn = sqlite3.connect(DB_PATH)
-    try:
-        rows = conn.execute(
-            "SELECT id, filename, page_count, LENGTH(content), ingested_at "
-            "FROM documents ORDER BY id"
-        ).fetchall()
-        return [(r[0], r[1], r[2], r[3], r[4]) for r in rows]
-    except sqlite3.OperationalError:
-        return []
-    finally:
-        conn.close()
-
-
-def save_uploaded_file(uploaded_file, target_dir: Path) -> Path:
-    target_dir.mkdir(parents=True, exist_ok=True)
-    path = target_dir / uploaded_file.name
-    path.write_bytes(uploaded_file.getbuffer())
-    return path
-
-
-def ingest_one_file(path: Path) -> tuple[bool, str]:
-    """Ingest a single file into the SQLite store. Returns (success, message)."""
-    try:
-        text, page_count = extract(path)
+        text, page_count = extract_uploaded_file(uploaded_file)
     except Exception as e:
         return False, f"failed to read ({e})"
-
     if not text:
         return False, "no extractable text (image-only PDF — needs vision in a later phase)"
-
-    conn = sqlite3.connect(DB_PATH)
-    init_db(conn)
-    try:
-        conn.execute(
-            "INSERT INTO documents (filename, page_count, content, ingested_at) "
-            "VALUES (?, ?, ?, ?)",
-            (path.name, page_count, text, datetime.now(timezone.utc).isoformat()),
-        )
-        conn.commit()
-        return True, f"ingested ({page_count} pages, {len(text):,} chars)"
-    except sqlite3.IntegrityError:
+    row = db.insert_document(FIRM_ID, uploaded_file.name, text, page_count)
+    if row is None:
         return False, "already ingested (filename matches an existing entry)"
-    finally:
-        conn.close()
+    return True, f"ingested ({page_count} pages, {len(text):,} chars)"
 
 
-def stream_profile_generation():
-    """Generator that streams text from Claude while regenerating the firm profile.
-
-    Saves to PROFILE_PATH on completion. Yields text deltas for st.write_stream.
-    """
-    conn = sqlite3.connect(DB_PATH)
-    corpus = load_corpus(conn)
-    conn.close()
-
-    client = anthropic.Anthropic()
-    chunks: list[str] = []
-    final_message = None
-
-    with client.messages.stream(
-        model="claude-opus-4-7",
-        max_tokens=16000,
-        thinking={"type": "adaptive"},
-        system=[
-            {"type": "text", "text": PROFILE_INSTRUCTIONS},
-            {
-                "type": "text",
-                "text": f"<firm_corpus>\n{corpus}\n</firm_corpus>",
-                "cache_control": {"type": "ephemeral"},
-            },
-        ],
-        messages=[{"role": "user", "content": PROFILE_USER_PROMPT}],
-    ) as stream:
-        for text in stream.text_stream:
-            chunks.append(text)
-            yield text
-        final_message = stream.get_final_message()
-
-    profile_text = "".join(chunks)
-    PROFILE_PATH.write_text(profile_text)
-
-    if final_message:
-        usage = final_message.usage
-        st.session_state["last_profile_usage"] = {
-            "input": usage.input_tokens,
-            "cache_write": usage.cache_creation_input_tokens,
-            "cache_read": usage.cache_read_input_tokens,
-            "output": usage.output_tokens,
-        }
-
-
-def run_deal_analysis(
-    deck_path: Path, streaming_placeholder
-) -> dict:
-    """Run analyze_deck() with live streaming into the given Streamlit placeholder.
-
-    Saves both the full memo and the triage block to disk, populates session
-    state with the structured result, and returns it.
-    """
-    deck_text = deck_path.read_text(encoding="utf-8")
-    profile_text = PROFILE_PATH.read_text(encoding="utf-8")
-
-    conn = sqlite3.connect(DB_PATH)
-    corpus = load_corpus(conn)
-    conn.close()
-
+def stream_profile_generation_to(placeholder) -> dict:
+    """Stream profile generation, updating the given Streamlit placeholder.
+    Returns the result dict (with usage)."""
     chunks: list[str] = []
 
     def on_chunk(text: str) -> None:
         chunks.append(text)
-        streaming_placeholder.markdown("".join(chunks))
+        placeholder.markdown("".join(chunks))
 
-    result = analyze_deck(
+    return generate_profile(FIRM_ID, stream_callback=on_chunk)
+
+
+def run_deal_analysis_streamed(
+    deck_text: str, deck_filename: str, source: str, placeholder
+) -> dict:
+    """Run analysis with live streaming into the given placeholder.
+    Saves to session_state and returns the result."""
+    chunks: list[str] = []
+
+    def on_chunk(text: str) -> None:
+        chunks.append(text)
+        placeholder.markdown("".join(chunks))
+
+    result = run_analysis(
+        FIRM_ID,
         deck_text=deck_text,
-        deck_filename=deck_path.name,
-        profile_text=profile_text,
-        corpus_text=corpus,
+        deck_filename=deck_filename,
+        source=source,
         stream_callback=on_chunk,
     )
-
-    ANALYSES_DIR.mkdir(parents=True, exist_ok=True)
-    memo_path = ANALYSES_DIR / f"{deck_path.stem}.memo.md"
-    triage_path = ANALYSES_DIR / f"{deck_path.stem}.triage.md"
-    memo_path.write_text(result["full_memo_md"])
-    triage_path.write_text(result["triage_md"])
-
     st.session_state["last_analysis"] = result
-    st.session_state["last_deck_path"] = str(deck_path)
-    st.session_state["last_memo_path"] = str(memo_path)
-
+    st.session_state["last_deck_filename"] = deck_filename
     return result
 
 
-def render_triage(result: dict, deck_path: Path | None) -> None:
-    """Render the structured triage layout for a completed analysis.
-
-    Layout (top → bottom):
-      - colored verdict badge
-      - WHY bullets
-      - ASK FIRST questions (only if verdict == 'Ask first')
-      - full-memo expander (deep dive)
-      - token-usage caption
-      - download button
-    """
+def render_triage(result: dict, deck_filename: str | None) -> None:
+    """Render the structured triage layout for a completed analysis."""
     verdict = result.get("verdict", "Unknown")
 
     if verdict == "Take meeting":
@@ -292,11 +196,11 @@ def render_triage(result: dict, deck_path: Path | None) -> None:
             f"latency: {usage.get('latency_ms', 0):,} ms"
         )
 
-    if deck_path and full_memo:
+    if deck_filename and full_memo:
         st.download_button(
             "Download full memo (.md)",
             data=full_memo,
-            file_name=f"{Path(deck_path).stem}.memo.md",
+            file_name=f"{Path(deck_filename).stem}.memo.md",
             mime="text/markdown",
         )
 
@@ -306,21 +210,25 @@ def render_triage(result: dict, deck_path: Path | None) -> None:
 st.title("VC Thesis Assistant")
 st.caption("Drop in a deck. Get back a memo grounded in your firm's history.")
 
+# Sidebar: status snapshot. Hits Supabase on every script rerun (cheap).
 with st.sidebar:
     st.header("Status")
-    doc_count, total_chars = get_corpus_summary()
+    doc_count = db.count_documents(FIRM_ID)
+    total_chars = db.total_corpus_chars(FIRM_ID)
+    profile_md = db.get_firm_profile(FIRM_ID)
     st.metric("Documents in corpus", doc_count)
     st.metric("Total characters", f"{total_chars:,}")
-    profile_exists = PROFILE_PATH.exists()
-    st.metric("Firm profile", "Generated" if profile_exists else "Not generated")
+    st.metric("Firm profile", "Generated" if profile_md else "Not generated")
     st.divider()
     st.caption(
         "Model: claude-opus-4-7  \n"
-        "Adaptive thinking + prompt caching enabled."
+        "Adaptive thinking + prompt caching enabled.  \n"
+        "Database: Supabase Postgres."
     )
 
 
 tab_setup, tab_analyze = st.tabs(["1. Firm Setup", "2. Analyze a Deal"])
+
 
 # ----- Tab 1: Firm Setup ------------------------------------------------------
 
@@ -343,8 +251,7 @@ with tab_setup:
         if st.button("Save and ingest", type="primary"):
             results = []
             for f in uploaded:
-                path = save_uploaded_file(f, DOCS_DIR)
-                ok, msg = ingest_one_file(path)
+                ok, msg = ingest_uploaded_file(f)
                 results.append((f.name, ok, msg))
             for name, ok, msg in results:
                 if ok:
@@ -355,18 +262,17 @@ with tab_setup:
 
     st.divider()
     st.subheader("Current corpus")
-    docs = list_corpus_documents()
+    docs = db.list_documents(FIRM_ID)
     if not docs:
         st.info("No documents yet. Upload above to get started.")
     else:
         st.dataframe(
             [
                 {
-                    "ID": d[0],
-                    "Filename": d[1],
-                    "Pages": d[2],
-                    "Chars": d[3],
-                    "Ingested": d[4][:19].replace("T", " "),
+                    "Filename": d["filename"],
+                    "Pages": d["page_count"],
+                    "Chars": len(d.get("content") or ""),
+                    "Ingested": d["ingested_at"][:19].replace("T", " "),
                 }
                 for d in docs
             ],
@@ -387,25 +293,27 @@ with tab_setup:
     if gen_clicked:
         with st.spinner("Distilling the firm's strategy..."):
             placeholder = st.empty()
-            placeholder.write_stream(stream_profile_generation())
-        usage = st.session_state.get("last_profile_usage")
-        if usage:
-            st.caption(
-                f"Tokens — input: {usage['input']:,} | "
-                f"cache write: {usage['cache_write']:,} | "
-                f"cache read: {usage['cache_read']:,} | "
-                f"output: {usage['output']:,}"
-            )
-
-    if PROFILE_PATH.exists() and not gen_clicked:
+            result = stream_profile_generation_to(placeholder)
+            placeholder.empty()
+        usage = result["usage"]
+        st.success("Profile generated and saved to Supabase.")
+        st.caption(
+            f"Tokens — input: {usage['input_tokens']:,}  ·  "
+            f"cache write: {usage['cache_creation_input_tokens']:,}  ·  "
+            f"cache read: {usage['cache_read_input_tokens']:,}  ·  "
+            f"output: {usage['output_tokens']:,}"
+        )
+        with st.expander("View generated firm profile", expanded=True):
+            st.markdown(result["profile_md"])
+    elif profile_md:
         with st.expander("View current firm profile", expanded=False):
-            st.markdown(PROFILE_PATH.read_text())
+            st.markdown(profile_md)
 
 
 # ----- Tab 2: Analyze a deal --------------------------------------------------
 
 with tab_analyze:
-    if not PROFILE_PATH.exists():
+    if not profile_md:
         st.warning(
             "No firm profile yet. Go to the **Firm Setup** tab, upload some docs, "
             "and generate the profile first."
@@ -414,8 +322,8 @@ with tab_analyze:
         st.subheader("Analyze a new pitch deck")
         st.write(
             "Upload a deck (or pick one of the test decks already in the project). "
-            "The analyzer will read it, compare against the firm's history, and "
-            "write a one-page fit memo."
+            "The analyzer compares it against the firm's history and writes a "
+            "compact triage block plus a deeper memo."
         )
 
         deck_choice = st.radio(
@@ -424,7 +332,8 @@ with tab_analyze:
             horizontal=True,
         )
 
-        target_deck_path: Path | None = None
+        # Tuple shape: (source, filename, text) once a deck is picked
+        target_deck: tuple[str, str, str] | None = None
 
         if deck_choice == "Upload a new deck":
             deck_file = st.file_uploader(
@@ -434,14 +343,23 @@ with tab_analyze:
                 key="deck_upload",
             )
             if deck_file is not None:
-                target_deck_path = save_uploaded_file(deck_file, INCOMING_DECKS_DIR)
-                st.caption(f"Saved to {target_deck_path}")
+                try:
+                    deck_text, _ = extract_uploaded_file(deck_file)
+                except Exception as e:
+                    st.error(f"Could not read deck: {e}")
+                    deck_text = ""
+                if deck_text:
+                    target_deck = ("upload", deck_file.name, deck_text)
         else:
-            existing = sorted(
-                p
-                for p in INCOMING_DECKS_DIR.iterdir()
-                if p.suffix.lower() in SUPPORTED_EXTENSIONS
-            ) if INCOMING_DECKS_DIR.exists() else []
+            existing = (
+                sorted(
+                    p
+                    for p in INCOMING_DECKS_DIR.iterdir()
+                    if p.suffix.lower() in SUPPORTED_EXTENSIONS
+                )
+                if INCOMING_DECKS_DIR.exists()
+                else []
+            )
             if not existing:
                 st.info("No test decks on disk yet.")
             else:
@@ -449,22 +367,25 @@ with tab_analyze:
                     "Select a deck",
                     options=[p.name for p in existing],
                 )
-                target_deck_path = INCOMING_DECKS_DIR / pick
+                p = INCOMING_DECKS_DIR / pick
+                target_deck = ("upload", p.name, p.read_text(encoding="utf-8"))
 
-        if target_deck_path is not None:
+        if target_deck is not None:
+            source, deck_filename, deck_text = target_deck
             with st.expander("Preview the deck", expanded=False):
-                st.markdown(target_deck_path.read_text(encoding="utf-8"))
+                st.markdown(deck_text)
 
             if st.button("Analyze this deck", type="primary"):
                 with st.spinner("Reading the deck and writing the memo..."):
                     streaming_placeholder = st.empty()
-                    run_deal_analysis(target_deck_path, streaming_placeholder)
+                    run_deal_analysis_streamed(
+                        deck_text, deck_filename, source, streaming_placeholder
+                    )
                     streaming_placeholder.empty()
 
         if "last_analysis" in st.session_state:
             st.divider()
-            stored_deck = st.session_state.get("last_deck_path")
             render_triage(
                 st.session_state["last_analysis"],
-                Path(stored_deck) if stored_deck else None,
+                st.session_state.get("last_deck_filename"),
             )

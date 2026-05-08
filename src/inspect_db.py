@@ -1,4 +1,4 @@
-"""Quick utility to inspect what's in the local document database.
+"""Inspect the firm's Supabase data — documents, profile state, recent analyses.
 
 Usage:
     python -m src.inspect_db
@@ -6,36 +6,51 @@ Usage:
 
 from __future__ import annotations
 
-import sqlite3
+from dotenv import load_dotenv
 
-from src.config import DB_PATH
+from src import db
+
+load_dotenv()
 
 
 def main() -> None:
-    if not DB_PATH.exists():
-        print(f"No database yet at {DB_PATH}. Run `python -m src.ingest` first.")
-        return
-
-    conn = sqlite3.connect(DB_PATH)
-    rows = conn.execute(
-        "SELECT id, filename, page_count, length(content), ingested_at "
-        "FROM documents ORDER BY id"
-    ).fetchall()
-
-    if not rows:
-        print("Database exists but contains no documents.")
-        return
-
-    print(f"{len(rows)} document(s) in {DB_PATH}:")
+    firm = db.get_or_create_default_firm()
+    print(f"Firm: {firm['name']} (slug={firm['slug']}, id={firm['id']})")
+    print(f"Profile: {'generated' if firm.get('profile_md') else 'not generated'}")
     print()
-    print(f"{'ID':>3}  {'Filename':<50}  {'Pages':>5}  {'Chars':>8}  Ingested")
-    print("-" * 100)
-    for row in rows:
-        doc_id, filename, pages, chars, ingested_at = row
-        fname = filename if len(filename) <= 50 else filename[:47] + "..."
-        print(f"{doc_id:>3}  {fname:<50}  {pages:>5}  {chars:>8,}  {ingested_at}")
 
-    conn.close()
+    docs = db.list_documents(firm["id"])
+    if not docs:
+        print("No documents in corpus. Run `python -m src.ingest` first.")
+        return
+
+    print(f"{len(docs)} document(s):")
+    print()
+    print(f"{'Filename':<55}  {'Pages':>5}  {'Chars':>8}  Ingested")
+    print("-" * 100)
+    for d in docs:
+        fname = d["filename"]
+        if len(fname) > 55:
+            fname = fname[:52] + "..."
+        chars = len(d.get("content") or "")
+        print(
+            f"{fname:<55}  "
+            f"{d['page_count']:>5}  "
+            f"{chars:>8,}  "
+            f"{d['ingested_at'][:19].replace('T', ' ')}"
+        )
+
+    analyses = db.list_analyses_for_firm(firm["id"], limit=20)
+    if analyses:
+        print()
+        print(f"{len(analyses)} most-recent analyses:")
+        for a in analyses:
+            deck = a.get("deck") or {}
+            label = deck.get("original_filename") or deck.get("subject") or "(no name)"
+            print(
+                f"  [{a['verdict']:<13}]  {label:<40}  "
+                f"{a['created_at'][:19].replace('T', ' ')}"
+            )
 
 
 if __name__ == "__main__":

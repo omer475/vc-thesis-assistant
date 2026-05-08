@@ -1,33 +1,33 @@
 ## Fit summary
-Borderline-fit consumer social where the deck's headline retention numbers, if real, would justify a meeting — but they're unverified, and the entire investment case rests on them. The firm's 2018 thesis explicitly includes "entertainment, connection, community, and fun" under well-being, so this isn't off-thesis. But the 2015 memo is candid that broad consumer networks are structurally harder now, which raises the bar on proof. We owe ourselves the cohort data before spending partner time.
+On thesis, but ungated by the one thing that matters for a consumer-social seed: real cohort curves. Wisp targets the well-being/connection lane of the 2018 thesis with credible founders and a coherent product, but the entire investment case rests on retention numbers the deck reports without showing. Two or three answered questions decide whether this is a Take meeting or a Pass.
 
 ## Where it maps to our thesis
-- **2018 framing — broadened access to well-being.** The 2018 memo defines well-being as including "entertainment, connection, community, and fun." A close-friends voice network sits squarely in "connection" and "community."
-- **2012 framing — large networks defensible through network effects.** The pitch is canonical Thesis 1.0: "large networks of engaged users, differentiated by user experience, and defensible through network effects." The deck's 30-second-voice + ephemeral-by-default UX claim is a user-experience differentiator; the question is whether the network effect is real at small-group scale.
-- **2015 caveat.** The firm explicitly noted that "it became harder — and it's still hard — for newer entrants, newer broad consumer networks, to gain scale." Wisp is exactly the kind of bet 2015 warned would be hard — but didn't say to stop making.
-- **Trusted brands.** The 2018 memo emphasizes that "trust comes from true alignment." Ephemeral + close-friends + no public posting is a coherent trust-aligned product stance, if the founders can articulate it.
+- **"Forge backs trusted brands that broaden access to knowledge, capital, and well-being"** (v3.0, 2018) — Wisp targets the well-being bucket, which we explicitly defined to include "entertainment, connection, community, and fun." Voice-first close-friend messaging is squarely in that lane.
+- **"Large networks of engaged users, differentiated through user experience, and defensible through network effects"** (v1.0, 2012) — voice as a primary medium is a genuine UX wedge, and ephemerality + small-group structure is a real product choice, not a feature pile.
+- **"Less obvious network effects"** (v2.0, 2015) — small-group close-friend graphs are exactly the subtler network shape v2.0 anticipated; the question is whether Wisp's graph is dense enough to compound.
+- **2024 "Network Effect Applications" quadrant** — open + slow, "user and data network effects… layered with AI capabilities." Wisp could fit here long-term if voice unlocks AI-native features (transcription search, voice cloning, ambient summarization) but the deck doesn't go there.
 
 ## Comparable past deals
-- **Snapchat (passed, archive).** Closest analog: ephemeral, mobile-native, close-friends. We coin-flipped our way out of meeting Spiegel in 2011. The lesson here isn't "say yes to anything that looks like Snap" — it's that we cannot use Snap's existence as a reason to dismiss Wisp.
-- **Foursquare (portfolio, Thesis 1.0).** Novel native UX (the check-in) on a small-group social graph. We backed it on UX differentiation and graph quality, not scale at the time. Wisp's voice-clip primitive is a comparable UX bet. Foursquare's eventual ceiling is also a cautionary note.
-- **Twitter/Tumblr (portfolio, Thesis 1.0).** The original "large networks" wins. Different shape — public broadcast, not close-friend — but the bar Wisp would need to clear to be a fund-returner is in this neighborhood.
-- **Facebook (passed, archive).** Passed on "haven't you heard of Friendster?" The lesson — "an incumbent already exists is not a sufficient reason to pass on a product that targets a different user behavior or different graph density" — is directly relevant: Wisp's ephemeral-voice + close-friends graph is a different graph density than Snap's.
+- **Snapchat (pass archive)** — Gen Z, ephemeral, close-friend graph. We coin-flipped our way out of that meeting. Wisp shares the structural DNA; the lesson is to not let logistics or reflex drive the call. Difference: Snap had explosive in-school virality we could see in the wild; Wisp's 52K MAU is too small to confirm or deny that pattern.
+- **Facebook (pass archive)** — "haven't you heard of Friendster?" Voice-note usage in iMessage/WhatsApp is the Friendster analog here — the obvious objection ("Apple/Meta already do voice notes") is exactly the one our archive tells us not to lean on.
+- **Foursquare / Behance (portfolio, Thesis 1.0)** — small, behavior-specific consumer networks differentiated by a novel native interaction (check-in, creative portfolio). Wisp's 30-second voice clip is in the same lineage. Difference: those deals had clearer category leadership at the time of investment than Wisp does today.
+- **Instacart (pass archive)** — we passed on Series B over negative unit economics that turned out to be data, not a verdict. The analog warning here: don't pass on a fast-scaling consumer product because monetization is vague at seed. Pre-revenue is normal; the question is engagement, not ARPU.
 
 ## Red flags
-1. **Retention is self-reported with no cohort breakdown.** 19% D30 sounds best-in-class, but absent cohort curves, we cannot tell if newer cohorts are decaying faster than older ones, or if power users are masking the median.
-2. **Growth attribution is unspecified.** "15% MoM organic" is asserted without breakdown of source — paid, viral K-factor, single-creator seeding, or PR-driven.
-3. **Pre-revenue with vague monetization.** "Premium tier, then maybe ads later" is hand-wavy. For consumer social this is somewhat normal at seed, but per the Kayak lesson we should still model 2–3 plausible monetization paths to test which the product shape actually supports.
-4. **Two-person founding team, both PM/eng from incumbents, no obvious design or community lead.** A consumer-social product whose differentiation is UX and feel typically wants a strong design partner from day zero.
-5. **iOS-only at 52K MAU may be hiding a ceiling.** Either the iOS-college demographic is the entire market and Android won't add much, or Android opens a step-change — the deck doesn't argue either case.
-6. **SUPPRESSED: "Snapchat / Discord / iMessage already do voice notes."** This is the archive's flagged anti-pattern. Not raised here. Same with "valuation feels rich at $20M post on $0 revenue" — see Airbnb lesson.
+1. **Retention numbers are self-reported and unbacked by cohort detail.** 38% D7 and 19% D30 *would* be best-in-class — which is precisely why we need to see them broken out by cohort before committing partner time. This is the deal's load-bearing claim.
+2. **Growth attribution is opaque.** 15% MoM organic is asserted, but the ask earmarks budget for a "creator-led growth program at colleges" — implying paid acquisition is part of the plan and possibly part of the past. Mixed.
+3. **Network density unknown.** Voice messaging only compounds if friend groups are dense and reciprocal. The deck doesn't show send/receive patterns, group size, or reciprocity rates.
+4. **Monetization is hand-waved** ("premium tier, then maybe ads"). Per the Kayak lesson we shouldn't pass over the *first* monetization path being weak — but we should at least see two plausible paths modeled.
+5. **SUPPRESSED — "crowded market / incumbent voice notes already exist."** Per Zoom and Facebook in the pass archive, this is not a reason to pass. WhatsApp voice notes inside a messaging app and a standalone voice social network are different products targeting different behaviors. Not raising it.
+6. **SUPPRESSED — "two-person team, no consumer-social operator at the helm."** Both founders are incumbent alumni from the most relevant places (Reels, TikTok). Per the Okta lesson, we tend to under-credit incumbent-alumni founders by 18–24 months.
 
 ## Questions for the founder
-1. Send the full cohort retention table (signup-month cohorts × D1/D7/D30/D60/D90). What does the most recent cohort look like vs. six months ago?
-2. Decompose 15% MoM growth: % paid, % invited-by-existing-user (K-factor), % attributable to specific creator/PR moments. What's the K-factor by cohort?
-3. Graph density: median sends per active user per week, median recipients per send, % of D30 users who send (not just listen), distribution of close-friend group sizes.
-4. What user research convinced you a *standalone app* beats voice-notes-inside-iMessage / Discord / Snap? What's the wedge that keeps a 16-year-old opening Wisp specifically?
-5. Why ephemeral 24-hour expiry rather than persistent? Have you A/B tested? What does retention look like in a non-ephemeral cohort if one exists?
-6. On monetization: in a world where ads don't work for a small-friends-only product (no public surface), what's the realistic ceiling on premium-tier conversion, and what comparable consumer-social premium products are you benchmarking against?
+1. Cohort retention table — D1/D7/D30 by monthly signup cohort since launch. Is 38%/19% the aggregate or the most recent cohort? Are curves flattening or decaying?
+2. Network metrics — median close-friends-per-user, distribution of group sizes, % of MAU with ≥1 reciprocal voice exchange per week.
+3. Organic vs. paid growth split for the last six months. What does the curve look like with paid stripped out?
+4. Why ephemeral by default? Have you tested permanent-by-option? Snap's history says ephemeral compounds engagement; we want to hear you've made this choice deliberately and have data.
+5. Android timeline and what % of your target Gen Z user is iOS-locked vs. Android-locked. A US college-only iOS strategy is fine; a global Gen Z strategy is not.
+6. Two-year monetization model with at least two distinct revenue paths sketched (premium, ads, creator economy, B2B voice infra) — we want to see you've thought past the first one.
 
 ## Recommendation
-Hold the meeting until we see cohort curves, growth attribution, and graph-density data — those three answers individually flip our verdict, so they belong before the meeting, not in it.
+Send the three asks today; if cohorts and network-density numbers come back strong, put it on next week's calendar and treat the rest as the meeting agenda.

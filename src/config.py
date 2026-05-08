@@ -1,10 +1,15 @@
 """Centralized paths and config.
 
-In local dev, DATA_DIR defaults to <repo>/data/ — exactly what we had before.
+After the Supabase migration (Step 2) the project no longer uses a local
+SQLite database. The remaining `data/` directories are for:
 
-In production (e.g., Render), set DATA_DIR=/var/data (or wherever the
-persistent disk is mounted). All file/db paths read from DATA_DIR, so the
-same code runs locally and on the deployed server with no other changes.
+  - committed example fixtures (firm_docs/, incoming_decks/) that the
+    bootstrap seeds into Supabase on first run, and
+  - convenience exports written by CLI commands (firm_profile.md,
+    analyses/<stem>.{memo,triage}.md) so users can grep them on disk.
+
+`DATA_DIR` is still controllable via env var so a future production deploy
+can point convenience exports at a writable persistent location if needed.
 """
 
 from __future__ import annotations
@@ -20,7 +25,6 @@ DATA_DIR = Path(os.environ.get("DATA_DIR", str(EXAMPLE_DATA_DIR)))
 DOCS_DIR = DATA_DIR / "firm_docs"
 INCOMING_DECKS_DIR = DATA_DIR / "incoming_decks"
 ANALYSES_DIR = DATA_DIR / "analyses"
-DB_PATH = DATA_DIR / "firm.db"
 PROFILE_PATH = DATA_DIR / "firm_profile.md"
 
 

@@ -1,11 +1,11 @@
 VERDICT: Ask first
 
 WHY:
-• Retention is the entire investment crux and is self-reported — 38% D7 / 19% D30 with no cohort curves, no engagement depth, no graph density; can't assess whether this is real "defensible through network effects" (01_firm_thesis_v1_2012.md).
-• Thesis hook is thin but real — voice-first close-friend messaging maps to "entertainment, connection, community, and fun" (03_firm_thesis_v3_2018.md), but 2015 explicitly flagged that "newer broad consumer networks" are hard to scale (02_firm_thesis_v2_2015.md).
-• Do not pass on "Snapchat is the incumbent" — that's "the laziest pass reason in our archive" (06_pass_reasons_archive.md); the test is execution differentiation, not category crowding.
+• Thesis-aligned on paper — voice-first close-friend network fits v3.0 well-being framing of "entertainment, connection, community, and fun" (03_firm_thesis_v3_2018.md).
+• Deal turns on self-reported D7/D30 retention with no cohort breakdown — and consumer social must defend through "less obvious network effects" we can't verify from the deck (02_firm_thesis_v2_2015.md).
+• Suppressing the easy objections — "another disappearing-message app, crowded space" doesn't apply, since "'Crowded market' is the laziest pass reason in our archive" (06_pass_reasons_archive.md).
 
 ASK FIRST:
-1. Send the cohort retention table — month-by-month signup cohorts with D1/D7/D30/D60/D90 curves. Are the 38%/19% headline numbers cohort-stable, or is a power-user aggregate masking heavy churn in newer cohorts?
-2. Attribute the 15% MoM growth. What share is paid, PR-driven, or single-creator-driven (TikTok seed posts, etc.) vs. true K-factor invitations from existing users? Show k-factor by cohort.
-3. What does the active-user graph actually look like — median sends per user per week, median number of close-friend recipients per user, and the percentage of D30 users who are sending (not just listening)? A small-group voice network is only defensible if density per cluster is high.
+1. Send the cohort retention table — D1/D7/D30 by monthly cohort since launch. Are 38%/19% aggregate, or are they holding for the most recent cohort that grew 13x in six months? Front-loaded curves would flip this to a pass; durable curves would flip it to a yes.
+2. What's the median close-friend group size per user, and what % of MAU send ≥3 voice clips/week to ≥2 unique recipients who reply? Voice social without reciprocal density is async voicemail and won't compound.
+3. Of the 15% MoM growth, what share is organic invites vs. paid/seeded acquisition? The "creator-led growth program at colleges" line in the ask suggests current growth may not be self-sustaining — we need to know which.

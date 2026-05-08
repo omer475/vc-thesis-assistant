@@ -1,104 +1,63 @@
-"""First-boot bootstrap: seed example data into DATA_DIR and auto-ingest.
+"""First-boot bootstrap: ensure the default firm exists in Supabase, then
+seed example fixtures (firm docs) into the firm's corpus on first deploy.
 
-In production (DATA_DIR != repo/data/), the persistent disk starts empty on
-first deploy. This module copies the committed example firm docs and decks
-into DATA_DIR if it's empty, and runs ingestion so the demo immediately
-shows something.
-
-Idempotent — safe to call on every startup.
+Idempotent — safe to call on every Streamlit script rerun. After Step 2
+this is much simpler than before: no filesystem juggling, just a couple of
+DB queries that no-op when data is already present.
 """
 
 from __future__ import annotations
 
-import shutil
-import sqlite3
-from datetime import datetime, timezone
-
-from src.config import (
-    DATA_DIR,
-    DB_PATH,
-    DOCS_DIR,
-    EXAMPLE_DATA_DIR,
-    INCOMING_DECKS_DIR,
-    ensure_dirs,
-    is_running_in_production,
-)
-from src.ingest import SUPPORTED_EXTENSIONS, extract, init_db
+from src import db
+from src.config import EXAMPLE_DATA_DIR, ensure_dirs
+from src.ingest import SUPPORTED_EXTENSIONS, extract
 
 
-def _copy_files_if_target_empty(source_dir, target_dir) -> int:
-    if not source_dir.exists():
+def _seed_documents_if_empty(firm_id: str) -> int:
+    """If the firm has zero documents and example fixtures are checked into the
+    repo, ingest the fixtures so the demo always has something to show.
+    Returns the number of documents inserted (0 if no seeding happened).
+    """
+    if db.count_documents(firm_id) > 0:
         return 0
-    target_dir.mkdir(parents=True, exist_ok=True)
-    if any(p for p in target_dir.iterdir() if p.suffix.lower() in SUPPORTED_EXTENSIONS):
-        return 0
-    copied = 0
-    for f in source_dir.iterdir():
-        if f.is_file() and f.suffix.lower() in SUPPORTED_EXTENSIONS:
-            shutil.copy(f, target_dir / f.name)
-            copied += 1
-    return copied
 
-
-def _ingest_pending(docs_dir) -> int:
-    docs = sorted(p for p in docs_dir.iterdir() if p.suffix.lower() in SUPPORTED_EXTENSIONS)
-    if not docs:
+    example_docs_dir = EXAMPLE_DATA_DIR / "firm_docs"
+    if not example_docs_dir.exists():
         return 0
-    conn = sqlite3.connect(DB_PATH)
-    init_db(conn)
-    ingested = 0
-    for path in docs:
+
+    inserted = 0
+    for path in sorted(example_docs_dir.iterdir()):
+        if path.suffix.lower() not in SUPPORTED_EXTENSIONS:
+            continue
         try:
             text, page_count = extract(path)
         except Exception:
             continue
         if not text:
             continue
-        try:
-            conn.execute(
-                "INSERT INTO documents (filename, page_count, content, ingested_at) "
-                "VALUES (?, ?, ?, ?)",
-                (path.name, page_count, text, datetime.now(timezone.utc).isoformat()),
-            )
-            conn.commit()
-            ingested += 1
-        except sqlite3.IntegrityError:
-            pass
-    conn.close()
-    return ingested
+        row = db.insert_document(firm_id, path.name, text, page_count)
+        if row:
+            inserted += 1
+    return inserted
 
 
 def run() -> dict:
-    """Run the boot bootstrap. Returns counts for logging.
+    """Bootstrap on app start. Returns counts for logging.
 
-    Idempotent. Behaviors:
-      - Render (DATA_DIR=/var/data, persistent): on first boot, copies the
-        committed example files into the empty disk.
-      - Streamlit Cloud (DATA_DIR defaults to the cloned repo's data/, ephemeral):
-        the example files are already there, but firm.db is gitignored so it
-        starts empty on every restart — we re-ingest from the existing files.
-      - Local dev: example files and firm.db usually both exist; the ingest is
-        a safe no-op because of UNIQUE(filename) on the documents table.
+    Behavior:
+      - Always ensure firm `forge` exists in `firms`.
+      - On first run (firm has 0 documents) AND committed example fixtures
+        exist in the repo: ingest the fixtures so the demo isn't empty.
+      - Always a no-op for repeat runs.
     """
     ensure_dirs()
-
-    docs_copied = 0
-    decks_copied = 0
-    if is_running_in_production():
-        docs_copied = _copy_files_if_target_empty(
-            EXAMPLE_DATA_DIR / "firm_docs", DOCS_DIR
-        )
-        decks_copied = _copy_files_if_target_empty(
-            EXAMPLE_DATA_DIR / "incoming_decks", INCOMING_DECKS_DIR
-        )
-
-    ingested = _ingest_pending(DOCS_DIR)
-
+    firm = db.get_or_create_default_firm()
+    seeded = _seed_documents_if_empty(firm["id"])
     return {
-        "docs_copied": docs_copied,
-        "decks_copied": decks_copied,
-        "documents_ingested": ingested,
-        "is_production": is_running_in_production(),
+        "firm_id": firm["id"],
+        "firm_slug": firm["slug"],
+        "documents_seeded": seeded,
+        "documents_total": db.count_documents(firm["id"]),
     }
 
 

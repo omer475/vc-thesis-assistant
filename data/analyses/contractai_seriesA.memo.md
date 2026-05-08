@@ -1,32 +1,33 @@
 ## Fit summary
-This is a high-fit Series A: a credentialed vertical-AI team selling into a domain (law) where Forge has invested before, with $2.1M ARR and 128% NDR providing verifiable evidence the wedge is working. It maps cleanly onto two thesis layers — the 2018 "broaden access" mission and the 2024 Defensible Niche Models quadrant — and the load-bearing claims (revenue, customer count, team) are verifiable in normal diligence rather than gating the meeting.
+This is a high-fit Series A worth a meeting this week. ContractAI sits squarely in two of our active thesis lanes — vertical networks/marketplaces (legal, where we previously backed Casetext) and the "Defensible Niche Models" quadrant of our 2024 AI framework. Verifiable traction ($2.1M ARR, 128% NDR, 8% MoM) and a credentialed founding team mean the open questions are agenda items, not gates.
 
 ## Where it maps to our thesis
-- **Vertical/market-specific networks** — Forge has explicitly targeted "the law (Casetext)" as a vertical bet (02_firm_thesis_v2_2015.md). ContractAI is a more recent, AI-native version of that same vertical.
-- **Defensible Niche Models** — the 2024 memo argues "data is more specific and targeted than in generalist models, so vertical players can defend a moat that horizontal ones can't" (04_firm_thesis_four_futures_2024.md). ContractAI's claim that 4M reviewed clauses → 71%→88% edge-case accuracy is exactly this mechanism, if it holds up.
-- **Broaden access** — the 2018 thesis is that "products that enable new behavior, create new forms of access, and inspire users will generate outsized value" (04_firm_thesis_four_futures_2024.md). Giving 12,000+ mid-market firms senior-associate-quality first-pass review is access-broadening in the firm's specific sense.
-- **Trusted brands built on alignment** — "Trust comes from true alignment" (03_firm_thesis_v3_2018.md). The partner-verifies-before-sending design is a trust-aligned product choice; worth probing whether it's marketing or genuinely load-bearing.
+- **"Vertical networks and marketplaces"** (03_firm_thesis_v3_2018.md) — legal is one of the verticals named in v2.0, and Casetext was our explicit bet there. ContractAI extends that lane into the AI-native era.
+- **"Defensible Niche Models (Closed + Slow)"** (04_firm_thesis_four_futures_2024.md) — the deck's data-flywheel pitch ("the model that has seen the most niche contract types is the one mid-market firms can't get elsewhere") is a direct restatement of our quadrant thesis: vertical players defend moats horizontal ones can't.
+- **"Broaden access"** (03_firm_thesis_v3_2018.md) — mid-market firms gaining first-pass review parity with Am Law 100 firms is a clean access-broadening narrative for the supply side of legal services.
+- **"Trust comes from true alignment"** (03_firm_thesis_v3_2018.md) — partner-facing change tracker, in-tenant data, customer-consented training are all alignment artifacts, not afterthoughts.
 
 ## Comparable past deals
-- **Casetext (portfolio)** — Forge's prior legal vertical bet. ContractAI is similar in vertical and customer; different in being AI-native from day one and targeting first-pass review rather than research.
-- **Radiant / Blixt / Lydian / Glow (portfolio, Four Futures era)** — current AI bets. Different quadrant (Fat Models / infrastructure), but ContractAI is the natural Defensible Niche Models complement to that portfolio construction.
-- **Sift Science (portfolio)** — vertical data network where every customer interaction improved the model. Similar moat shape; different domain. Useful precedent for evaluating whether ContractAI's data flywheel is real.
-- **Carta / eShares (portfolio)** — vertical SaaS into a professional-services-adjacent buyer (cap table mgmt vs. legal review), with similar "do the work the firm currently overpays for" wedge.
+- **Casetext (portfolio, v2.0 era)** — same vertical (law), earlier era. ContractAI is the AI-native re-platforming of the same wedge. Different: ContractAI sells to firms not individual lawyers, and the moat is data + workflow not just content.
+- **Sift Science (portfolio)** — vertical AI defended via aggregated data network across tenants. ContractAI's 4M-clause flywheel claim is structurally identical. Different: Sift's data was inherently pooled; ContractAI claims in-tenant — worth probing how the flywheel actually compounds.
+- **Okta (pass-reason archive)** — incumbent-alumni founders building for a workflow that "seemed far too complex" too early. Maya Okafor (Coinbase GC) and Sarah Chen (ex-Cooley partner) are the same archetype. Lesson: do not price them 5 years early.
+- **PayPal (pass-reason archive)** — applies as a *suppression* signal, see Red Flags.
 
 ## Red flags
-1. **The data network effect claim may be weaker than slide 6 implies.** They say data is used "in-tenant" with customer consent — that suggests per-tenant fine-tuning, not a pooled cross-customer model. If data doesn't pool across firms, the moat narrows from "we've seen the most contracts in mid-market law" to "we've seen the most contracts at *your* firm." Worth pressing in the meeting.
-2. **Roadmap sprawl in the ask.** $12M to add two new contract types (commercial leases, M&A diligence), build a new partner-facing UI, and hire 4 AEs is three different bets. Which is the actual unlock?
-3. **Customer concentration / cohort durability unknown.** 63 firms, 128% NDR is a strong headline, but a few large firm-wide expansions can carry that number. Standard Series A diligence.
-4. **Competitive pressure from Harvey, Ironclad, and incumbents like Thomson Reuters / LexisNexis is real — explicitly NOT raising this as a pass reason.** "Crowded market" is the firm's named-and-shamed laziest pass reason (Zoom, Facebook). The question is execution differentiation, which we evaluate in the meeting.
-5. **Regulatory/liability exposure (hallucinated redlines, malpractice) — explicitly NOT raising this as a pass reason.** PayPal's "rookie team, regulatory nightmare" is in the archive. Probe in meeting; don't pre-disqualify.
+1. **Data-moat mechanism is ambiguous.** Deck says "in-tenant" but also that the *aggregate* model trained on 4M clauses. How the flywheel actually compounds across tenants is the load-bearing claim of slide 6 and needs unpacking. Agenda item, not a gate, given the rest is verifiable.
+2. **Foundation-model commoditization risk.** If GPT-class models reach senior-associate quality on standard contract types without vertical fine-tuning, the wedge narrows fast. Their "edge case" framing (71% → 88% on unusual clauses) is the right defense; durability of that gap is the question.
+3. **Roadmap dilution risk.** Expanding to commercial leases *and* M&A diligence *and* a partner-facing UI *and* hiring 4 AEs against Am Law 200 (different ICP than mid-market) on $12M is a lot of vectors. The Am Law pivot in particular is off-message vs. the mid-market wedge.
+4. **Buyer concentration / contract size mix.** $33K ACV × 63 firms ≈ $2.1M, but NDR 128% suggests heavy expansion concentration. Want to see logo-level cohort retention.
+5. **SUPPRESSED — "crowded market."** Harvey, EvenUp, Ironclad, and a dozen others are in legal AI. Per archive, "'crowded market' is the laziest pass reason in our archive" (Zoom lesson). Not raising.
+6. **SUPPRESSED — regulated/legal-vertical risk profile.** Legal services have ethics rules and UPL exposure, but per the PayPal lesson, "regulatory complexity in financial services is often a moat after the company survives." Same logic applies here. Not raising as a flag.
 
 ## Questions for the founder
-1. Is the model trained on pooled cross-customer data, or per-tenant only? If per-tenant, what *is* the cross-customer moat — distribution, workflow, brand?
-2. Of the 128% NDR, what's the split between seat expansion within an office vs. multi-office firm-wide rollout? How many firms have actually gone firm-wide?
-3. The 71%→88% edge-case accuracy curve — what's the asymptote you're modeling, and how much of the lift came from data vs. base-model upgrades you'd have gotten for free?
-4. Why commercial leases and M&A diligence next, rather than going deeper in the four contract types you already have? What does the data say about win rates by contract type?
-5. How are you positioned against Harvey moving down-market and against the Big Three legal-research incumbents (Thomson Reuters, LexisNexis, Bloomberg) bundling AI into existing seats?
-6. Maya — coming out of Coinbase GC, what's your read on the malpractice/E&O insurance landscape for AI-suggested redlines, and how is that priced into your contracts today?
+1. Walk us through the data flywheel: what crosses tenant boundaries, what doesn't, and which clauses got the 71→88% lift — was it from in-tenant fine-tunes or from cross-tenant patterns?
+2. Logo-level cohort retention: of the firms onboarded 12+ months ago, what percentage are still paying, and what's the gross dollar retention separate from the 128% net?
+3. The $12M ask funds two new contract types *and* a partner-facing UI *and* an Am Law 200 sales motion. Why all three on this round, and which would you cut if forced?
+4. What does churn look like when a firm pilots Harvey or Ironclad's contract module alongside you? Have you been displaced from any account, and why?
+5. How does pricing hold up if foundation-model quality on standard NDAs/MSAs reaches your level without vertical work? What's the "edge case" share of revenue today?
+6. Maya — what did you learn at Coinbase about selling AI-assisted legal workflows into compliance-heavy buyers, and how does that change the GTM here?
 
 ## Recommendation
-Take the meeting this week; the open questions are agenda items, not gates.
+Take the meeting this week; treat the data-moat mechanism and roadmap-focus questions as the agenda, not as preconditions.

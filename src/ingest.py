@@ -1,44 +1,29 @@
-"""Ingest documents from data/firm_docs/ into a local SQLite database.
+"""Ingest documents from data/firm_docs/ into the firm's Supabase corpus.
 
 Supported file types: .pdf, .md, .txt
 
-Usage:
+CLI:
     python -m src.ingest
 
-Drop the firm's memos, notes, and thesis docs into data/firm_docs/, then run
-this script. Each document is stored once; re-running is safe.
+Drop the firm's memos, notes, and thesis docs into data/firm_docs/, then
+run this script. Each document is stored once per firm; re-running is
+safe (`unique (firm_id, filename)` makes it idempotent).
 """
 
 from __future__ import annotations
 
-import sqlite3
-from datetime import datetime, timezone
 from pathlib import Path
 
 from dotenv import load_dotenv
 from pypdf import PdfReader
 
-from src.config import DATA_DIR, DB_PATH, DOCS_DIR, ensure_dirs
+from src import db
+from src.config import DOCS_DIR, ensure_dirs
 
 load_dotenv()
 ensure_dirs()
 
 SUPPORTED_EXTENSIONS = {".pdf", ".md", ".txt"}
-
-
-def init_db(conn: sqlite3.Connection) -> None:
-    conn.execute(
-        """
-        CREATE TABLE IF NOT EXISTS documents (
-            id           INTEGER PRIMARY KEY AUTOINCREMENT,
-            filename     TEXT NOT NULL UNIQUE,
-            page_count   INTEGER NOT NULL,
-            content      TEXT NOT NULL,
-            ingested_at  TEXT NOT NULL
-        )
-        """
-    )
-    conn.commit()
 
 
 def extract_pdf_text(pdf_path: Path) -> tuple[str, int]:
@@ -62,7 +47,43 @@ def extract(path: Path) -> tuple[str, int]:
     raise ValueError(f"Unsupported file type: {suffix}")
 
 
-def ingest() -> None:
+def ingest_one(firm_id: str, filename: str, text: str, page_count: int) -> str:
+    """Insert one document. Returns 'inserted' / 'exists' / 'no-text' / 'error:<msg>'."""
+    if not text:
+        return "no-text"
+    row = db.insert_document(firm_id, filename, text, page_count)
+    return "inserted" if row else "exists"
+
+
+def ingest_directory(firm_id: str, dir_path: Path) -> dict[str, int]:
+    """Walk dir_path and ingest every supported file. Returns counts by status."""
+    counts = {"inserted": 0, "exists": 0, "no-text": 0, "error": 0}
+    if not dir_path.exists():
+        return counts
+
+    docs = sorted(p for p in dir_path.iterdir() if p.suffix.lower() in SUPPORTED_EXTENSIONS)
+    for path in docs:
+        try:
+            text, page_count = extract(path)
+        except Exception as e:
+            print(f"[error]  {path.name}: failed to read ({e}) — skipping")
+            counts["error"] += 1
+            continue
+
+        status = ingest_one(firm_id, path.name, text, page_count)
+        if status == "inserted":
+            print(f"[ok]     {path.name} ({page_count} pages, {len(text):,} chars)")
+            counts["inserted"] += 1
+        elif status == "exists":
+            print(f"[exists] {path.name}: already ingested")
+            counts["exists"] += 1
+        elif status == "no-text":
+            print(f"[no-text] {path.name}: no extractable text (image-only PDF?)")
+            counts["no-text"] += 1
+    return counts
+
+
+def main() -> None:
     DOCS_DIR.mkdir(parents=True, exist_ok=True)
     docs = sorted(p for p in DOCS_DIR.iterdir() if p.suffix.lower() in SUPPORTED_EXTENSIONS)
 
@@ -72,51 +93,17 @@ def ingest() -> None:
         print("Drop the firm's memos and notes into that folder, then run again.")
         return
 
-    conn = sqlite3.connect(DB_PATH)
-    init_db(conn)
+    firm = db.get_or_create_default_firm()
+    print(f"Ingesting into firm: {firm['name']} (slug={firm['slug']}, id={firm['id']})")
 
-    ingested = 0
-    skipped = 0
-    no_text = 0
-
-    for path in docs:
-        try:
-            text, page_count = extract(path)
-        except Exception as e:
-            print(f"[error]  {path.name}: failed to read ({e}) — skipping")
-            skipped += 1
-            continue
-
-        if not text:
-            print(f"[no-text] {path.name}: no extractable text "
-                  "(image-only PDF — needs vision-based extraction in a later phase).")
-            no_text += 1
-            continue
-
-        try:
-            conn.execute(
-                "INSERT INTO documents (filename, page_count, content, ingested_at) "
-                "VALUES (?, ?, ?, ?)",
-                (
-                    path.name,
-                    page_count,
-                    text,
-                    datetime.now(timezone.utc).isoformat(),
-                ),
-            )
-            conn.commit()
-            print(f"[ok]     {path.name} ({page_count} pages, {len(text):,} chars)")
-            ingested += 1
-        except sqlite3.IntegrityError:
-            print(f"[exists] {path.name}: already ingested, skipping")
-            skipped += 1
-
-    conn.close()
+    counts = ingest_directory(firm["id"], DOCS_DIR)
 
     print()
-    print(f"Done. Ingested: {ingested}  |  Already in DB: {skipped}  |  No text: {no_text}")
-    print(f"Database: {DB_PATH}")
+    print(
+        f"Done. Inserted: {counts['inserted']}  |  Already in DB: {counts['exists']}  "
+        f"|  No text: {counts['no-text']}  |  Errors: {counts['error']}"
+    )
 
 
 if __name__ == "__main__":
-    ingest()
+    main()
