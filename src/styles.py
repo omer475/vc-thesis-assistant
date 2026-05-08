@@ -270,10 +270,16 @@ def _public_mode_css() -> str:
 
 
 def inject_global_css() -> None:
-    """Inject the global stylesheet. Call once after `st.set_page_config`."""
-    st.markdown(_global_css(), unsafe_allow_html=True)
+    """Inject the global stylesheet. Call once after `st.set_page_config`.
+
+    Uses `st.html()` rather than `st.markdown(unsafe_allow_html=True)` because
+    Streamlit 1.44+ strips `<style>` and `<script>` tags from markdown for
+    XSS hardening. `st.html()` (added 1.33) is the supported escape hatch
+    for raw HTML/CSS.
+    """
+    st.html(_global_css())
 
 
 def inject_public_mode_css() -> None:
     """Inject the public-route override (hides sidebar, narrows layout)."""
-    st.markdown(_public_mode_css(), unsafe_allow_html=True)
+    st.html(_public_mode_css())
