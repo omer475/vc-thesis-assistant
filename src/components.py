@@ -347,7 +347,7 @@ def data_table(headers: list[str], rows: list[list[str]]) -> str:
     if not rows:
         return (
             f'<div style="background: {BG_CARD}; border: 0.5px solid {BORDER_DEFAULT}; '
-            f"border-radius: {RADIUS_MD}; overflow: hidden;">"
+            f'border-radius: {RADIUS_MD}; overflow: hidden;">'
             f'<table style="width: 100%; border-collapse: collapse; '
             f'background: {BG_TABLE_HEAD};">'
             f"<thead><tr>{head_cells}</tr></thead></table>"
@@ -374,7 +374,7 @@ def data_table(headers: list[str], rows: list[list[str]]) -> str:
 
     return (
         f'<div style="background: {BG_CARD}; border: 0.5px solid {BORDER_DEFAULT}; '
-        f"border-radius: {RADIUS_MD}; overflow: hidden;\">"
+        f'border-radius: {RADIUS_MD}; overflow: hidden;">'
         f'<table style="width: 100%; border-collapse: collapse;">'
         f'<thead style="background: {BG_TABLE_HEAD};"><tr>{head_cells}</tr></thead>'
         f"<tbody>{body_html}</tbody>"
