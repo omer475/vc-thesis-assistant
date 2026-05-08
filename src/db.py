@@ -191,11 +191,31 @@ def insert_document(
 
 
 def assemble_corpus(firm_id: str) -> str:
-    """Concatenate every firm document into a single string for the system prompt.
-    Format matches what `analyze_deck` and `generate_profile` expect.
+    """Concatenate every firm document + synced pass reasons into a single
+    string for the system prompt. The pass-reasons block is appended at the
+    end so the prefix-cached portion (the docs) doesn't churn when reasons
+    are added.
     """
     docs = list_documents(firm_id)
     parts = [f"=== {d['filename']} ===\n\n{d['content']}" for d in docs]
+
+    pass_reasons = list_pass_reasons(firm_id)
+    if pass_reasons:
+        pass_block_lines = ["=== synced_pass_reasons.md ===", ""]
+        for pr in pass_reasons:
+            company = pr.get("company_name") or "(unnamed company)"
+            date = pr.get("deal_date") or ""
+            source = pr.get("source") or "manual"
+            heading = f"## {company}"
+            if date:
+                heading += f" — passed {date}"
+            heading += f" (source: {source})"
+            pass_block_lines.append(heading)
+            pass_block_lines.append("")
+            pass_block_lines.append(pr.get("reason_text") or "")
+            pass_block_lines.append("")
+        parts.append("\n".join(pass_block_lines).strip())
+
     return "\n\n---\n\n".join(parts)
 
 
@@ -365,6 +385,52 @@ def list_pass_reasons(firm_id: str) -> list[dict]:
         .execute()
     )
     return res.data or []
+
+
+def upsert_pass_reason(
+    firm_id: str,
+    source: str,
+    reason_text: str,
+    company_name: str | None = None,
+    deal_date: str | None = None,
+) -> dict:
+    """Insert or update a pass_reason, dedupe on (firm_id, company_name).
+
+    No-op if both reason_text is empty. Returns {action, id} where action is
+    'inserted', 'updated', or 'skipped'.
+    """
+    if not reason_text:
+        return {"action": "skipped"}
+
+    if company_name:
+        existing = (
+            client()
+            .table("pass_reasons")
+            .select("id")
+            .eq("firm_id", firm_id)
+            .eq("company_name", company_name)
+            .limit(1)
+            .execute()
+        )
+        if existing.data:
+            row_id = existing.data[0]["id"]
+            payload: dict[str, Any] = {
+                "reason_text": reason_text,
+                "source": source,
+            }
+            if deal_date is not None:
+                payload["deal_date"] = deal_date
+            client().table("pass_reasons").update(payload).eq("id", row_id).execute()
+            return {"action": "updated", "id": row_id}
+
+    inserted = insert_pass_reason(
+        firm_id=firm_id,
+        source=source,
+        reason_text=reason_text,
+        company_name=company_name,
+        deal_date=deal_date,
+    )
+    return {"action": "inserted", "id": inserted["id"]}
 
 
 @_resilient
