@@ -18,9 +18,13 @@ Phase 1 (per `BRIEF.md`) in progress:
 
 - [x] Step 1 — Triage output format (verdict + cited bullets + full memo)
 - [x] Step 2 — Supabase Postgres migration (data persists across restarts)
-- [ ] Step 3 — Public deal-link pages
+- [x] Step 3 — Public deal-link pages (shareable read-only URLs)
 - [ ] Step 4 — Affinity connector
 - [ ] Step 5 — Admin polish (six-tab structure, analytics)
+
+## Known v1 tradeoffs
+
+- **Public deal pages use unguessable UUIDs as the only access control.** Anyone with a `/?deal=<uuid>` URL can view that one analysis without logging in — the assumption is that the recipient is the partner the URL was deliberately sent to. UUIDs are not enumerable, but if a link leaks, the recipient gains read-only access to that one analysis (not the whole firm). Tightening this to per-recipient signed URLs is Phase 2 work, not Phase 1.
 
 ## Architecture
 

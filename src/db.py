@@ -60,6 +60,11 @@ def create_firm(slug: str, name: str, profile_md: str | None = None) -> dict:
     return res.data[0]
 
 
+def get_firm(firm_id: str) -> dict | None:
+    res = client().table("firms").select("*").eq("id", firm_id).limit(1).execute()
+    return res.data[0] if res.data else None
+
+
 def get_or_create_default_firm() -> dict:
     """Return the Forge Ventures row, creating it on first call."""
     firm = get_firm_by_slug(DEFAULT_FIRM_SLUG)
