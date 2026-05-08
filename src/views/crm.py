@@ -1,17 +1,18 @@
-"""CRM tab — Affinity connection + sync UI.
+"""CRM tab — Affinity connection + sync UI + manual paste fallback.
 
-Two states:
-  - Not connected: status_card with a "Connect Affinity" CTA. Clicking it
-    opens an inline form for the API key + Passed status ID.
-  - Connected: status_card with sync stats + Sync now / Disconnect actions,
-    plus a data_table of synced pass reasons.
+Three sections, top to bottom:
+  - Affinity status card (Not connected → Connect form, or Connected → Sync now)
+  - Manual paste-and-import (works without any CRM)
+  - Recent pass reasons table
 
-Functional sync logic lives in `src/affinity.py`. Without a real Affinity
-workspace, use `python -m scripts.seed_synthetic_pass_reasons` to populate
-the table for demo purposes.
+Functional sync logic lives in `src/affinity.py`. Manual upload is a parser
+in this file — accepts free-form text where blank lines separate entries
+and a "Company —" or "Company:" heading prefix is best-effort extracted.
 """
 
 from __future__ import annotations
+
+import re
 
 import streamlit as st
 
@@ -38,6 +39,113 @@ def _truncate(text: str | None, n: int) -> str:
     if len(s) <= n:
         return s
     return s[: n - 1].rstrip() + "…"
+
+
+# Regex helpers for the manual paste parser.
+_COMPANY_HEADING_RE = re.compile(
+    r"^(?P<co>[A-Z][\w &.\-/]{1,50}?)\s*[—\-:](?:\s|$)"
+)
+_PASSED_ON_RE = re.compile(
+    r"^[Pp]assed (?:on |)(?P<co>[A-Z][\w]{1,40})", re.MULTILINE
+)
+
+
+def parse_pasted_pass_reasons(text: str) -> list[dict]:
+    """Best-effort parse of free-form pasted text into pass-reason rows.
+
+    Conventions accepted:
+      - Blank lines separate entries.
+      - First line of each entry is treated as a possible heading; if it
+        starts with `Company —` / `Company:` / `Company -`, the company
+        is extracted from before the separator.
+      - Otherwise, the parser scans for "Passed on COMPANY" anywhere in
+        the entry and uses that.
+      - If nothing matches, the entry is still ingested with company=None.
+    """
+    text = (text or "").strip()
+    if not text:
+        return []
+    chunks = re.split(r"\n\s*\n", text)
+    out: list[dict] = []
+    for chunk in chunks:
+        chunk = chunk.strip()
+        if not chunk:
+            continue
+        company: str | None = None
+        first_line = chunk.split("\n", 1)[0]
+        m = _COMPANY_HEADING_RE.match(first_line)
+        if m:
+            company = m.group("co").strip()
+        else:
+            m = _PASSED_ON_RE.search(chunk)
+            if m:
+                company = m.group("co").strip()
+        out.append({"company_name": company, "reason_text": chunk})
+    return out
+
+
+def _render_manual_upload(firm: dict) -> None:
+    st.html('<div style="height: 28px;"></div>')
+    st.html(section_label("Or paste pass reasons manually"))
+    st.html(
+        f'<div style="font-size: 13px; color: {TEXT_SECONDARY}; '
+        f'line-height: 1.5; margin-bottom: 12px;">'
+        f"Useful if you don't use Affinity, or for backfilling notes that aren't "
+        f"in your CRM. Paste your pass reasons below — separate each entry with a "
+        f"blank line. The parser will best-effort extract a company name from a "
+        f"<code>Company —</code> or <code>Company:</code> heading, but you can "
+        f"paste plain text and it still works."
+        f"</div>"
+    )
+
+    pasted = st.text_area(
+        "Paste below",
+        height=180,
+        key="_crm_manual_paste",
+        placeholder=(
+            "Stripe — passed 2010\n"
+            "We thought it was two college kids with a toy. Lesson: don't pattern-match\n"
+            "founder age to market signal.\n"
+            "\n"
+            "Notion — passed 2018\n"
+            "We said wikis are dead. Lesson: dead categories get reset by new primitives.\n"
+        ),
+        label_visibility="collapsed",
+    )
+
+    save_col, _ = st.columns([1, 4])
+    with save_col:
+        save_clicked = st.button(
+            "Import",
+            type="primary",
+            key="_crm_manual_import",
+            disabled=not pasted.strip(),
+        )
+
+    if save_clicked:
+        entries = parse_pasted_pass_reasons(pasted)
+        if not entries:
+            st.warning("Nothing to import — paste at least one entry.")
+            return
+        counts = {"inserted": 0, "updated": 0, "skipped": 0}
+        for entry in entries:
+            try:
+                result = db.upsert_pass_reason(
+                    firm_id=firm["id"],
+                    source="manual",
+                    reason_text=entry["reason_text"],
+                    company_name=entry["company_name"],
+                )
+                action = result.get("action", "skipped")
+                counts[action] = counts.get(action, 0) + 1
+            except Exception as e:
+                st.error(f"Failed on '{entry['company_name'] or '(unnamed)'}': {e}")
+                counts["skipped"] += 1
+        st.success(
+            f"Imported {len(entries)} entries. Inserted: {counts['inserted']}  ·  "
+            f"Updated: {counts['updated']}  ·  Skipped: {counts['skipped']}"
+        )
+        st.rerun()
 
 
 def _last_sync_label(pass_reasons: list[dict]) -> str:
@@ -160,7 +268,11 @@ def render_crm_tab(firm: dict) -> None:
             except Exception as e:
                 st.error(f"Unexpected error during sync: {e}")
 
-    # Recent pass reasons table
+    # Manual upload — always visible
+    _render_manual_upload(firm)
+
+    # Recent pass reasons table — re-fetch in case the manual upload added rows
+    pass_reasons = db.list_pass_reasons(firm["id"])
     if pass_reasons:
         st.html('<div style="height: 24px;"></div>')
         st.html(section_label("Recent pass reasons"))

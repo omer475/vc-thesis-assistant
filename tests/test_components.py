@@ -33,23 +33,58 @@ PRETTY_FILENAME_CASES = [
 
 def run() -> int:
     failures = []
+    print("pretty_filename:")
     for input_, expected in PRETTY_FILENAME_CASES:
         got = pretty_filename(input_)
         ok = got == expected
         marker = "OK  " if ok else "FAIL"
         print(f"  [{marker}]  {input_!r:55s} -> {got!r}")
         if not ok:
-            failures.append((input_, expected, got))
+            failures.append(("pretty_filename", input_, expected, got))
+
+    # parse_pasted_pass_reasons
+    print()
+    print("parse_pasted_pass_reasons:")
+    from src.views.crm import parse_pasted_pass_reasons
+
+    paste_sample = (
+        "Stripe — passed 2010\n"
+        "Two college kids with a toy. Lesson: don't pattern-match.\n"
+        "\n"
+        "Notion: passed 2018\n"
+        "Wikis are dead. Bad take.\n"
+        "\n"
+        "Random unstructured paragraph with no company name in it. Just notes.\n"
+        "\n"
+        "Passed on Anthropic in 2021 because 'research lab not a company.'\n"
+    )
+    parsed = parse_pasted_pass_reasons(paste_sample)
+    expected = [
+        ("Stripe", True),
+        ("Notion", True),
+        (None, True),
+        ("Anthropic", True),
+    ]
+    if len(parsed) != len(expected):
+        failures.append(
+            ("parse_pasted", "len", len(expected), len(parsed))
+        )
+    for got, (want_co, _) in zip(parsed, expected):
+        company = got.get("company_name")
+        ok = company == want_co
+        marker = "OK  " if ok else "FAIL"
+        print(f"  [{marker}]  expected company={want_co!r:15s}  got={company!r}")
+        if not ok:
+            failures.append(("parse_pasted", "company", want_co, company))
 
     print()
     if failures:
         print(f"{len(failures)} failure(s):")
-        for input_, expected, got in failures:
-            print(f"  {input_!r}")
-            print(f"    expected: {expected!r}")
-            print(f"    got:      {got!r}")
+        for fail in failures:
+            print(f"  {fail}")
         return 1
-    print(f"{len(PRETTY_FILENAME_CASES)} passed.")
+    total = len(PRETTY_FILENAME_CASES) + len(parsed)
+    print(f"{total} cases passed.")
     return 0
 
 
