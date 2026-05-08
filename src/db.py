@@ -12,10 +12,12 @@ update both there and here.
 
 from __future__ import annotations
 
+import functools
 import os
 from functools import lru_cache
 from typing import Any
 
+import httpx
 from supabase import Client, create_client
 
 DEFAULT_FIRM_SLUG = "forge"
@@ -31,7 +33,8 @@ def client() -> Client:
 
     Reads `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` from the environment
     on first call and caches the result. Streamlit reruns reuse the cached
-    client.
+    client. Stale-connection recovery is handled by `@_resilient` on the
+    public functions below.
     """
     url = os.environ.get("SUPABASE_URL")
     key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
@@ -44,14 +47,49 @@ def client() -> Client:
     return create_client(url, key)
 
 
+# Errors that indicate a transient network or stale-connection problem.
+# In long-running Streamlit sessions the cached httpx pool's keep-alive
+# connections can be dropped server-side; the next request fails with
+# "Server disconnected" until the pool is rebuilt.
+_TRANSIENT_HTTPX_ERRORS = (
+    httpx.RemoteProtocolError,
+    httpx.ConnectError,
+    httpx.ReadTimeout,
+    httpx.ConnectTimeout,
+    httpx.PoolTimeout,
+    httpx.WriteError,
+)
+
+
+def _resilient(fn):
+    """Decorator: on transient httpx errors, drop the cached client and retry once.
+
+    Apply to every db function that directly hits Supabase. Internal helper
+    functions that wrap other db functions don't need this — the inner call
+    will retry on its own.
+    """
+
+    @functools.wraps(fn)
+    def wrapper(*args, **kwargs):
+        try:
+            return fn(*args, **kwargs)
+        except _TRANSIENT_HTTPX_ERRORS:
+            client.cache_clear()
+            return fn(*args, **kwargs)
+
+    return wrapper
+
+
 # ----- Firms ------------------------------------------------------------------
 
 
+@_resilient
 def get_firm_by_slug(slug: str) -> dict | None:
     res = client().table("firms").select("*").eq("slug", slug).limit(1).execute()
     return res.data[0] if res.data else None
 
 
+@_resilient
 def create_firm(slug: str, name: str, profile_md: str | None = None) -> dict:
     payload: dict[str, Any] = {"slug": slug, "name": name}
     if profile_md is not None:
@@ -60,6 +98,7 @@ def create_firm(slug: str, name: str, profile_md: str | None = None) -> dict:
     return res.data[0]
 
 
+@_resilient
 def get_firm(firm_id: str) -> dict | None:
     res = client().table("firms").select("*").eq("id", firm_id).limit(1).execute()
     return res.data[0] if res.data else None
@@ -73,12 +112,14 @@ def get_or_create_default_firm() -> dict:
     return firm
 
 
+@_resilient
 def update_firm_profile(firm_id: str, profile_md: str) -> None:
     client().table("firms").update({"profile_md": profile_md}).eq(
         "id", firm_id
     ).execute()
 
 
+@_resilient
 def get_firm_profile(firm_id: str) -> str | None:
     res = client().table("firms").select("profile_md").eq("id", firm_id).limit(1).execute()
     if not res.data:
@@ -89,6 +130,7 @@ def get_firm_profile(firm_id: str) -> str | None:
 # ----- Documents (firm corpus) -----------------------------------------------
 
 
+@_resilient
 def list_documents(firm_id: str) -> list[dict]:
     res = (
         client()
@@ -101,6 +143,7 @@ def list_documents(firm_id: str) -> list[dict]:
     return res.data or []
 
 
+@_resilient
 def count_documents(firm_id: str) -> int:
     res = (
         client()
@@ -118,6 +161,7 @@ def total_corpus_chars(firm_id: str) -> int:
     return sum(len(d.get("content") or "") for d in docs)
 
 
+@_resilient
 def insert_document(
     firm_id: str, filename: str, content: str, page_count: int
 ) -> dict | None:
@@ -158,6 +202,7 @@ def assemble_corpus(firm_id: str) -> str:
 # ----- Decks ------------------------------------------------------------------
 
 
+@_resilient
 def insert_deck(
     firm_id: str,
     *,
@@ -185,6 +230,7 @@ def insert_deck(
 # ----- Analyses ---------------------------------------------------------------
 
 
+@_resilient
 def insert_analysis(
     deck_id: str,
     *,
@@ -211,6 +257,7 @@ def insert_analysis(
     return res.data[0]
 
 
+@_resilient
 def get_analysis(analysis_id: str) -> dict | None:
     """Fetch an analysis row joined with its parent deck (for the public view)."""
     res = (
@@ -224,6 +271,7 @@ def get_analysis(analysis_id: str) -> dict | None:
     return res.data[0] if res.data else None
 
 
+@_resilient
 def list_analyses_for_firm(firm_id: str, limit: int = 100) -> list[dict]:
     """Recent analyses for a firm, joined with their decks."""
     res = (
@@ -241,6 +289,7 @@ def list_analyses_for_firm(firm_id: str, limit: int = 100) -> list[dict]:
 # ----- Pass reasons -----------------------------------------------------------
 
 
+@_resilient
 def list_pass_reasons(firm_id: str) -> list[dict]:
     res = (
         client()
@@ -253,6 +302,7 @@ def list_pass_reasons(firm_id: str) -> list[dict]:
     return res.data or []
 
 
+@_resilient
 def insert_pass_reason(
     firm_id: str,
     source: str,
