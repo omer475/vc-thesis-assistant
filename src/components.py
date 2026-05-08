@@ -18,6 +18,25 @@ from typing import Any
 
 import streamlit as st
 
+# Explicit export list. Belt-and-suspenders against any environment that has
+# trouble resolving module-level names — `__all__` makes the public surface
+# unambiguous and discoverable.
+__all__ = [
+    "esc_html",
+    "verdict_pill",
+    "VERDICT_THEMES",
+    "section_label",
+    "pretty_filename",
+    "primary_button",
+    "secondary_button",
+    "format_relative_time",
+    "share_url_for",
+    "deal_card",
+    "status_card_html",
+    "metric_card",
+    "data_table",
+]
+
 from src.styles import (
     ASK_BG,
     ASK_BORDER,
