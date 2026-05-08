@@ -62,20 +62,33 @@ _TRANSIENT_HTTPX_ERRORS = (
 
 
 def _resilient(fn):
-    """Decorator: on transient httpx errors, drop the cached client and retry once.
+    """Decorator: on transient httpx errors, drop the cached client and retry.
+
+    Tries up to 3 attempts with brief exponential backoff (0s / 0.5s / 1.5s)
+    between them. Total worst-case delay before raising: ~2s. This rides over
+    typical Wi-Fi blips and DNS resolver hiccups without surfacing an error.
 
     Apply to every db function that directly hits Supabase. Internal helper
     functions that wrap other db functions don't need this — the inner call
-    will retry on its own.
+    retries on its own.
     """
+    import time
+
+    backoffs = (0.0, 0.5, 1.5)
 
     @functools.wraps(fn)
     def wrapper(*args, **kwargs):
-        try:
-            return fn(*args, **kwargs)
-        except _TRANSIENT_HTTPX_ERRORS:
-            client.cache_clear()
-            return fn(*args, **kwargs)
+        last_exc: Exception | None = None
+        for delay in backoffs:
+            if delay:
+                time.sleep(delay)
+            try:
+                return fn(*args, **kwargs)
+            except _TRANSIENT_HTTPX_ERRORS as e:
+                last_exc = e
+                client.cache_clear()
+        # Re-raise the final transient error so the caller sees it
+        raise last_exc  # type: ignore[misc]
 
     return wrapper
 
