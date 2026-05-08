@@ -286,6 +286,20 @@ def list_analyses_for_firm(firm_id: str, limit: int = 100) -> list[dict]:
     return res.data or []
 
 
+def count_deals_this_week(firm_id: str) -> int:
+    """Count analyses for this firm created in the last 7 days.
+
+    Implemented client-side (one query + filter) rather than via a count
+    aggregate because PostgREST's filter-through-foreign-table syntax is
+    fiddly and the volumes are low. Revisit if this becomes a bottleneck.
+    """
+    from datetime import datetime, timedelta, timezone
+
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
+    analyses = list_analyses_for_firm(firm_id, limit=500)
+    return sum(1 for a in analyses if (a.get("created_at") or "") >= cutoff)
+
+
 # ----- Pass reasons -----------------------------------------------------------
 
 
