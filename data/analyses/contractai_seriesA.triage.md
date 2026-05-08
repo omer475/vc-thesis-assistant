@@ -1,6 +1,6 @@
 VERDICT: Take meeting
 
 WHY:
-• Vertical legal network with a data-flywheel moat replays Casetext, fitting our 2015 turn toward "less obvious network effects" (02_firm_thesis_v2_2015.md).
-• Defensible vertical AI thesis directly maps — Four Futures argues "vertical players can defend a moat that horizontal ones can't" (04_firm_thesis_four_futures_2024.md).
-• Mid-market wedge extends senior-associate quality to firms priced out — squarely "trusted brands that broaden access to knowledge" (03_firm_thesis_v3_2018.md).
+• Vertical legal AI for mid-market firms directly replays Casetext, our prior bet on "the law" as a vertical network (02_firm_thesis_v2_2015.md).
+• $2.1M ARR (7x YoY), 128% NDR, ex-Coinbase GC + ex-Stripe ML lead — clean shape for "trusted brands that broaden access" to capital and knowledge (03_firm_thesis_v3_2018.md).
+• Compounding clause-label dataset maps to Defensible Niche Models, where "vertical players can defend a moat that horizontal ones can't" (04_firm_thesis_four_futures_2024.md).

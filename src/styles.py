@@ -260,6 +260,38 @@ button[data-testid="baseButton-secondary"]:hover {{
 }}
 details summary::-webkit-details-marker {{ display: none; }}
 details summary {{ outline: none; }}
+
+/* ---- Tablet / mobile responsiveness ---- */
+@media (max-width: 1024px) {{
+    .block-container {{
+        padding-left: 20px !important;
+        padding-right: 20px !important;
+    }}
+}}
+@media (max-width: 640px) {{
+    .block-container {{
+        padding-top: 16px !important;
+        padding-bottom: 16px !important;
+        padding-left: 16px !important;
+        padding-right: 16px !important;
+        max-width: 100% !important;
+    }}
+    /* Stack 4-up metric grids on mobile (Streamlit's columns already do
+       this for narrow widths, but enforce it anyway) */
+    [data-testid="column"] {{
+        min-width: 100% !important;
+        flex: 0 0 100% !important;
+    }}
+    /* Tighten table padding */
+    table th, table td {{
+        padding: 8px 10px !important;
+        font-size: 12px !important;
+    }}
+    /* Public deal card: less padding on mobile */
+    .stApp .block-container > div > div [data-testid="stHtml"] > div {{
+        padding: 20px !important;
+    }}
+}}
 </style>
 """
 

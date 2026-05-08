@@ -14,13 +14,29 @@ We use **retrieval-augmented generation** (the system looks up relevant past mem
 
 ## Status
 
-Phase 1 (per `BRIEF.md`) in progress:
+Phase 1 (per `BRIEF.md` + `DESIGN.md`) complete:
 
-- [x] Step 1 — Triage output format (verdict + cited bullets + full memo)
-- [x] Step 2 — Supabase Postgres migration (data persists across restarts)
-- [x] Step 3 — Public deal-link pages (shareable read-only URLs)
-- [ ] Step 4 — Affinity connector
-- [ ] Step 5 — Admin polish (six-tab structure, analytics)
+- [x] BRIEF Step 1 — Triage output format (verdict + cited bullets + full memo)
+- [x] BRIEF Step 2 — Supabase Postgres migration
+- [x] BRIEF Step 3 — Public deal-link pages
+- [x] BRIEF Step 4 — Affinity connector + synthetic pass-reasons seed script
+- [x] DESIGN Step 1 — Foundation (design tokens + global CSS injection)
+- [x] DESIGN Step 2 — Public deal page redesign
+- [x] DESIGN Step 3 — Admin shell + sidebar nav
+- [x] DESIGN Step 4 — Analyze tab with deal list + inline new-analysis flow
+- [x] DESIGN Step 5 — Firm setup tab (documents + profile)
+- [x] DESIGN Step 6 — Partners tab (CRUD)
+- [x] DESIGN Step 7 — CRM tab (Affinity connect + sync)
+- [x] DESIGN Step 8 — Analytics tab (metrics + chart)
+- [x] DESIGN Step 9 — Settings tab (identity + security + danger zone)
+- [x] DESIGN Step 10 — Visual QA + mobile-responsive CSS
+
+Phase 2 (deferred until a design partner commits):
+- Email forwarding (Resend inbound + FastAPI worker on Render)
+- Per-partner profile overlays
+- Outcomes-tracking loop
+- Real Affinity API testing against a live workspace
+- Public deal links signed per-recipient
 
 ## Known v1 tradeoffs
 
