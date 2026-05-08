@@ -16,7 +16,7 @@ import pandas as pd
 import streamlit as st
 
 from src import db
-from src.components import _esc, data_table, metric_card, section_label
+from src.components import esc_html, data_table, metric_card, section_label
 from src.styles import (
     ASK_DOT,
     BG_CARD,
@@ -180,7 +180,7 @@ def render_analytics_tab(firm: dict) -> None:
         last_at = max((a.get("created_at") or "") for a in items)
         rows.append(
             [
-                _esc(name),
+                esc_html(name),
                 str(len(items)),
                 _verdict_mix_html(v_counts),
                 f'<span style="color: {TEXT_SECONDARY};">{last_at[:10]}</span>',

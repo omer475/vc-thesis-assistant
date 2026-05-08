@@ -12,7 +12,7 @@ import os
 import streamlit as st
 
 from src import db
-from src.components import _esc, section_label
+from src.components import esc_html, section_label
 from src.styles import (
     BG_CARD,
     BORDER_DEFAULT,
@@ -30,7 +30,7 @@ from src.views._helpers import page_header
 def _identity_row(label: str, value: str, hint: str = "") -> str:
     hint_html = (
         f'<div style="font-size: 11px; color: {TEXT_TERTIARY}; margin-top: 2px;">'
-        f"{_esc(hint)}</div>"
+        f"{esc_html(hint)}</div>"
         if hint
         else ""
     )
@@ -38,7 +38,7 @@ def _identity_row(label: str, value: str, hint: str = "") -> str:
         f'<div style="display: flex; gap: 24px; padding: 14px 0; '
         f'border-bottom: 0.5px solid {BORDER_DEFAULT};">'
         f'<div style="flex: 0 0 180px; font-size: 13px; color: {TEXT_SECONDARY};">'
-        f"{_esc(label)}</div>"
+        f"{esc_html(label)}</div>"
         f'<div style="flex: 1; font-size: 13px; color: {TEXT_PRIMARY};">'
         f"{value}{hint_html}</div>"
         f"</div>"
@@ -58,17 +58,17 @@ def render_settings_tab(firm: dict) -> None:
     rows_html = (
         _identity_row(
             "Firm name",
-            f'<span style="font-weight: 500;">{_esc(firm.get("name") or "")}</span>',
+            f'<span style="font-weight: 500;">{esc_html(firm.get("name") or "")}</span>',
         )
         + _identity_row(
             "Firm slug",
             f'<code style="background: #F4F3EE; padding: 1px 6px; border-radius: 4px; '
-            f'font-size: 12px;">{_esc(firm.get("slug") or "")}</code>',
+            f'font-size: 12px;">{esc_html(firm.get("slug") or "")}</code>',
         )
         + _identity_row(
             "Email address",
             f'<code style="background: #F4F3EE; padding: 1px 6px; border-radius: 4px; '
-            f'font-size: 12px;">deals@{_esc(firm.get("slug") or "")}.thesis.ai</code>',
+            f'font-size: 12px;">deals@{esc_html(firm.get("slug") or "")}.thesis.ai</code>',
             "Live in Phase 2 — email forwarding not yet wired up.",
         )
         + _identity_row(

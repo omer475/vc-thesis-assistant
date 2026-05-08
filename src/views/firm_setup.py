@@ -15,7 +15,7 @@ from pypdf import PdfReader
 
 from src import db
 from src.components import (
-    _esc,
+    esc_html,
     data_table,
     format_relative_time,
     section_label,
@@ -149,7 +149,7 @@ def _render_documents_section(firm: dict) -> None:
         chars = len(d.get("content") or "")
         rows.append(
             [
-                _esc(d["filename"]),
+                esc_html(d["filename"]),
                 f'<span style="color: {TEXT_SECONDARY};">{d["page_count"]}</span>',
                 f'<span style="color: {TEXT_SECONDARY};">'
                 f'{format_relative_time(d.get("ingested_at"))}</span>',

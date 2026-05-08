@@ -13,7 +13,7 @@ import re
 import streamlit as st
 
 from src import db
-from src.components import _esc, data_table, format_relative_time
+from src.components import esc_html, data_table, format_relative_time
 from src.styles import (
     BG_CARD,
     BORDER_DEFAULT,
@@ -94,8 +94,8 @@ def render_partners_tab(firm: dict) -> None:
     for p in partners:
         rows.append(
             [
-                _esc(p.get("name") or "—"),
-                _esc(p.get("email") or ""),
+                esc_html(p.get("name") or "—"),
+                esc_html(p.get("email") or ""),
                 f'<span style="color: {TEXT_SECONDARY};">'
                 f'{format_relative_time(p.get("created_at"))}</span>',
             ]

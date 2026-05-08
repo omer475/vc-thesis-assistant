@@ -19,7 +19,7 @@ import streamlit as st
 from src import db
 from src.affinity import AffinityError, AffinityNotConfigured, sync_pass_reasons
 from src.components import (
-    _esc,
+    esc_html,
     data_table,
     format_relative_time,
     section_label,
@@ -280,10 +280,10 @@ def render_crm_tab(firm: dict) -> None:
         for p in pass_reasons[:50]:
             rows.append(
                 [
-                    _esc(p.get("company_name") or "—"),
-                    _esc(_truncate(p.get("reason_text"), 80)),
-                    _esc(p.get("deal_date") or "—"),
-                    f'<span style="color: {TEXT_SECONDARY};">{_esc(p.get("source") or "")}</span>',
+                    esc_html(p.get("company_name") or "—"),
+                    esc_html(_truncate(p.get("reason_text"), 80)),
+                    esc_html(p.get("deal_date") or "—"),
+                    f'<span style="color: {TEXT_SECONDARY};">{esc_html(p.get("source") or "")}</span>',
                 ]
             )
         st.html(data_table(["Company", "Reason snippet", "Date", "Source"], rows))

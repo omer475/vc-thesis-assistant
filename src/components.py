@@ -43,7 +43,7 @@ from src.styles import (
 )
 
 
-def _esc(value: Any) -> str:
+def esc_html(value: Any) -> str:
     return html.escape("" if value is None else str(value), quote=True)
 
 
@@ -247,13 +247,13 @@ def deal_card(deal: dict[str, Any]) -> str:
         partner_name = partner.get("name") or partner.get("email") or ""
 
     bottom_parts = [p for p in (partner_name, when) if p]
-    bottom_html = " · ".join(_esc(p) for p in bottom_parts) if bottom_parts else ""
+    bottom_html = " · ".join(esc_html(p) for p in bottom_parts) if bottom_parts else ""
 
     href = share_url_for(deal.get("id") or "")
     pill = verdict_pill(verdict, "sm")
 
     return (
-        f'<a href="{_esc(href)}" target="_self" class="vc-deal-card" '
+        f'<a href="{esc_html(href)}" target="_self" class="vc-deal-card" '
         f"style=\"display: block; text-decoration: none; "
         f"background: {BG_CARD}; border: 0.5px solid {BORDER_DEFAULT}; "
         f"border-radius: {RADIUS_MD}; padding: 14px 16px; "
@@ -262,7 +262,7 @@ def deal_card(deal: dict[str, Any]) -> str:
         f'<div style="flex: 1; min-width: 0;">'
         f'<div style="font-size: 14px; font-weight: 500; color: {TEXT_PRIMARY}; '
         f'line-height: 1.3; margin-bottom: 4px; overflow: hidden; '
-        f'text-overflow: ellipsis; white-space: nowrap;">{_esc(title)}</div>'
+        f'text-overflow: ellipsis; white-space: nowrap;">{esc_html(title)}</div>'
         f'<div style="font-size: 12px; color: {TEXT_TERTIARY};">{bottom_html}</div>'
         f"</div>"
         f'<div style="flex: 0 0 auto;">{pill}</div>'
@@ -290,7 +290,7 @@ def status_card_html(
     border = accent or BORDER_DEFAULT
     sub_html = (
         f'<div style="font-size: 13px; color: {TEXT_SECONDARY}; '
-        f'margin-top: 6px; line-height: 1.5;">{_esc(subtitle)}</div>'
+        f'margin-top: 6px; line-height: 1.5;">{esc_html(subtitle)}</div>'
         if subtitle
         else ""
     )
@@ -298,7 +298,7 @@ def status_card_html(
         f'<div style="background: {BG_CARD}; border: 0.5px solid {border}; '
         f'border-radius: {RADIUS_MD}; padding: 18px 20px;">'
         f'<div style="font-size: 14px; font-weight: 500; color: {TEXT_PRIMARY}; '
-        f'line-height: 1.4;">{_esc(title)}</div>'
+        f'line-height: 1.4;">{esc_html(title)}</div>'
         f"{sub_html}"
         f"</div>"
     )
@@ -310,7 +310,7 @@ def status_card_html(
 def metric_card(label: str, value: str, hint: str = "") -> str:
     hint_html = (
         f'<div style="font-size: 11px; color: {TEXT_TERTIARY}; '
-        f'margin-top: 6px;">{_esc(hint)}</div>'
+        f'margin-top: 6px;">{esc_html(hint)}</div>'
         if hint
         else ""
     )
@@ -318,9 +318,9 @@ def metric_card(label: str, value: str, hint: str = "") -> str:
         f'<div style="background: {BG_SIDEBAR}; border-radius: {RADIUS_MD}; '
         f'padding: 16px 18px;">'
         f'<div style="font-size: 12px; color: {TEXT_SECONDARY}; '
-        f'margin-bottom: 6px;">{_esc(label)}</div>'
+        f'margin-bottom: 6px;">{esc_html(label)}</div>'
         f'<div style="font-size: 22px; font-weight: 500; color: {TEXT_PRIMARY}; '
-        f'line-height: 1.1;">{_esc(value)}</div>'
+        f'line-height: 1.1;">{esc_html(value)}</div>'
         f"{hint_html}"
         f"</div>"
     )
@@ -340,7 +340,7 @@ def data_table(headers: list[str], rows: list[list[str]]) -> str:
         f'<th style="text-align: left; padding: 9px 14px; '
         f"font-size: 11px; font-weight: 500; "
         f"text-transform: uppercase; letter-spacing: 0.04em; "
-        f'color: {TEXT_TERTIARY};">{_esc(h)}</th>'
+        f'color: {TEXT_TERTIARY};">{esc_html(h)}</th>'
         for h in headers
     )
 

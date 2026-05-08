@@ -22,7 +22,7 @@ from pypdf import PdfReader
 from src import db
 from src.analyze import run_analysis
 from src.components import (
-    _esc,
+    esc_html,
     deal_card,
     format_relative_time,
     section_label,
@@ -69,7 +69,7 @@ def _render_completed_triage(result: dict) -> None:
     if bullets:
         items = []
         for i, b in enumerate(bullets, 1):
-            text = _esc(b.get("text"))
+            text = esc_html(b.get("text"))
             items.append(
                 f'<li style="display: flex; gap: 12px; padding: 10px 0; '
                 f'list-style: none; border-bottom: 0.5px solid {BORDER_DEFAULT};">'
@@ -100,7 +100,7 @@ def _render_completed_triage(result: dict) -> None:
         from src.styles import ASK_BG, ASK_BORDER, ASK_TEXT
 
         qs = "".join(
-            f'<li style="margin-bottom: 8px; line-height: 1.55;">{_esc(q)}</li>'
+            f'<li style="margin-bottom: 8px; line-height: 1.55;">{esc_html(q)}</li>'
             for q in questions
         )
         questions_html = (
