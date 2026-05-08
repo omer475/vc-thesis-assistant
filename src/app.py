@@ -41,7 +41,7 @@ except Exception:
 from dotenv import load_dotenv
 from streamlit_option_menu import option_menu
 
-from src import bootstrap, db
+from src import bootstrap, cache, db
 from src.styles import (
     TEXT_PRIMARY,
     TEXT_SECONDARY,
@@ -57,8 +57,13 @@ from src.views.settings import render_settings_tab
 
 load_dotenv()
 
-# Ensure firm exists + seed example data on first deploy. Idempotent.
-_boot_info = bootstrap.run()
+# Bootstrap once per Streamlit session, not on every rerun. The seed and
+# default-firm-create operations are idempotent but each makes 2 DB calls,
+# so re-running them on every widget interaction adds 200-600ms of latency
+# for nothing.
+if "_boot_info" not in st.session_state:
+    st.session_state["_boot_info"] = bootstrap.run()
+_boot_info = st.session_state["_boot_info"]
 FIRM_ID: str = _boot_info["firm_id"]
 
 
@@ -125,9 +130,9 @@ def _firm_header_html(firm: dict) -> str:
 
 
 def _status_block_html(firm_id: str) -> str:
-    n_docs = db.count_documents(firm_id)
-    total_chars = db.total_corpus_chars(firm_id)
-    n_deals_week = db.count_deals_this_week(firm_id)
+    n_docs = cache.count_documents(firm_id)
+    total_chars = cache.total_corpus_chars(firm_id)
+    n_deals_week = cache.count_deals_this_week(firm_id)
 
     if total_chars >= 1000:
         chars_label = f"{round(total_chars / 1000)}k chars"
@@ -146,7 +151,7 @@ def _status_block_html(firm_id: str) -> str:
     )
 
 
-firm = db.get_or_create_default_firm()
+firm = cache.get_firm(FIRM_ID) or db.get_or_create_default_firm()
 
 with st.sidebar:
     st.html(_firm_header_html(firm))

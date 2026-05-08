@@ -19,7 +19,7 @@ from pathlib import Path
 import streamlit as st
 from pypdf import PdfReader
 
-from src import db
+from src import cache, db
 from src.analyze import run_analysis
 from src.components import (
     esc_html,
@@ -166,7 +166,7 @@ def render_analyze_tab(firm: dict) -> None:
             label_visibility="visible",
         )
 
-        partners = db.list_partners(firm["id"]) if hasattr(db, "list_partners") else []
+        partners = cache.list_partners(firm["id"])
         partner_id = None
         if partners:
             options = ["(none)"] + [(p.get("name") or p.get("email")) for p in partners]
@@ -223,6 +223,7 @@ def render_analyze_tab(firm: dict) -> None:
 
             st.session_state[state_key_result] = result
             st.session_state[state_key_filename] = deck_file.name
+            cache.invalidate_all()
             st.rerun()
 
         if last_result is not None:
@@ -238,7 +239,7 @@ def render_analyze_tab(firm: dict) -> None:
     # Recent deals
     st.html('<div style="height: 8px;"></div>')
     st.html(section_label("Recent deals"))
-    analyses = db.list_analyses_for_firm(firm["id"], limit=50)
+    analyses = cache.list_analyses_for_firm(firm["id"], limit=50)
     if not analyses:
         st.html(
             f'<div style="background: {BG_CARD}; border: 0.5px solid {BORDER_DEFAULT}; '

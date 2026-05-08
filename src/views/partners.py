@@ -12,7 +12,7 @@ import re
 
 import streamlit as st
 
-from src import db
+from src import cache, db
 from src.components import esc_html, data_table, format_relative_time
 from src.styles import (
     BG_CARD,
@@ -53,6 +53,7 @@ def _render_add_partner_section(firm: dict) -> bool:
         if row is None:
             st.warning(f"{email} is already on the partner list.")
             return False
+        cache.invalidate_all()
         st.success(f"Added {email}.")
         st.session_state["_partners_add_open"] = False
         return True
@@ -79,7 +80,7 @@ def render_partners_tab(firm: dict) -> None:
             st.rerun()
 
     # Table
-    partners = db.list_partners(firm["id"])
+    partners = cache.list_partners(firm["id"])
     if not partners:
         st.html(
             f'<div style="background: {BG_CARD}; border: 0.5px solid {BORDER_DEFAULT}; '
@@ -117,5 +118,6 @@ def render_partners_tab(firm: dict) -> None:
                 key="_partners_delete_btn",
             ):
                 db.delete_partner(target["id"])
+                cache.invalidate_all()
                 st.success(f"Removed {target['email']}.")
                 st.rerun()

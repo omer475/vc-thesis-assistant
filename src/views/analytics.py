@@ -15,7 +15,7 @@ from datetime import datetime, timedelta, timezone
 import pandas as pd
 import streamlit as st
 
-from src import db
+from src import cache, db
 from src.components import esc_html, data_table, metric_card, section_label
 from src.styles import (
     ASK_DOT,
@@ -67,7 +67,7 @@ def render_analytics_tab(firm: dict) -> None:
     page_header(title="Analytics", subtitle=f"Past {WINDOW_DAYS} days.")
 
     cutoff = (datetime.now(timezone.utc) - timedelta(days=WINDOW_DAYS)).isoformat()
-    all_analyses = db.list_analyses_for_firm(firm["id"], limit=500)
+    all_analyses = cache.list_analyses_for_firm(firm["id"], limit=500)
     window = [a for a in all_analyses if (a.get("created_at") or "") >= cutoff]
 
     # Metrics
@@ -149,7 +149,7 @@ def render_analytics_tab(firm: dict) -> None:
     # By-partner table
     st.html('<div style="height: 28px;"></div>')
     st.html(section_label("By partner"))
-    partners = db.list_partners(firm["id"])
+    partners = cache.list_partners(firm["id"])
 
     by_partner: dict[str | None, list[dict]] = defaultdict(list)
     for a in window:

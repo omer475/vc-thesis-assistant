@@ -13,7 +13,7 @@ from pathlib import Path
 import streamlit as st
 from pypdf import PdfReader
 
-from src import db
+from src import cache, db
 from src.components import (
     esc_html,
     data_table,
@@ -59,7 +59,7 @@ def _section_count(profile_md: str) -> int:
 
 
 def _render_documents_section(firm: dict) -> None:
-    docs = db.list_documents(firm["id"])
+    docs = cache.list_documents(firm["id"])
 
     # Section header with count + Upload button
     head_col, btn_col = st.columns([4, 1])
@@ -129,6 +129,7 @@ def _render_documents_section(firm: dict) -> None:
                     st.success(f"{name}: {msg}")
                 else:
                     st.warning(f"{name}: {msg}")
+            cache.invalidate_all()
             st.session_state["_fs_upload_open_state"] = False
             st.rerun()
 
@@ -170,6 +171,7 @@ def _render_documents_section(firm: dict) -> None:
                 f"Permanently delete '{sel}'", type="secondary", key="_fs_delete_btn"
             ):
                 db.delete_document(target["id"])
+                cache.invalidate_all()
                 st.success(f"Deleted {sel}.")
                 st.rerun()
 
@@ -186,8 +188,8 @@ def _render_profile_section(firm: dict) -> None:
     st.html('<div style="height: 28px;"></div>')
     st.html(section_label("Firm profile"))
 
-    profile_md = firm.get("profile_md") or db.get_firm_profile(firm["id"]) or ""
-    n_docs = db.count_documents(firm["id"])
+    profile_md = firm.get("profile_md") or cache.get_firm_profile(firm["id"]) or ""
+    n_docs = cache.count_documents(firm["id"])
 
     if profile_md:
         sections = _section_count(profile_md)
@@ -231,6 +233,7 @@ def _render_profile_section(firm: dict) -> None:
 
             result = generate_profile(firm["id"], stream_callback=on_chunk)
             placeholder.empty()
+            cache.invalidate_all()
 
         usage = result["usage"]
         st.success("Profile generated and saved.")

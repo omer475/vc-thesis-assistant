@@ -16,7 +16,7 @@ import re
 
 import streamlit as st
 
-from src import db
+from src import cache, db
 from src.affinity import AffinityError, AffinityNotConfigured, sync_pass_reasons
 from src.components import (
     esc_html,
@@ -141,6 +141,7 @@ def _render_manual_upload(firm: dict) -> None:
             except Exception as e:
                 st.error(f"Failed on '{entry['company_name'] or '(unnamed)'}': {e}")
                 counts["skipped"] += 1
+        cache.invalidate_all()
         st.success(
             f"Imported {len(entries)} entries. Inserted: {counts['inserted']}  ·  "
             f"Updated: {counts['updated']}  ·  Skipped: {counts['skipped']}"
@@ -198,6 +199,7 @@ def _render_connect_form(firm: dict) -> bool:
         db.update_firm_affinity_config(
             firm["id"], api_key.strip(), passed_status_id.strip()
         )
+        cache.invalidate_all()
         st.success("Saved. You can run a sync now.")
         st.session_state["_crm_connect_open"] = False
         return True
@@ -211,11 +213,11 @@ def render_crm_tab(firm: dict) -> None:
     )
 
     # Reload firm to get latest config
-    firm = db.get_firm(firm["id"]) or firm
+    firm = cache.get_firm(firm["id"]) or firm
     is_connected = bool(
         firm.get("affinity_api_key") and firm.get("affinity_passed_status_id")
     )
-    pass_reasons = db.list_pass_reasons(firm["id"])
+    pass_reasons = cache.list_pass_reasons(firm["id"])
 
     if not is_connected:
         st.html(
@@ -249,6 +251,7 @@ def render_crm_tab(firm: dict) -> None:
         with dis_col:
             if st.button("Disconnect", type="secondary", key="_crm_disconnect"):
                 db.update_firm_affinity_config(firm["id"], None, None)
+                cache.invalidate_all()
                 st.success("Disconnected.")
                 st.rerun()
 
@@ -256,6 +259,7 @@ def render_crm_tab(firm: dict) -> None:
             try:
                 with st.spinner("Syncing from Affinity..."):
                     counts = sync_pass_reasons(firm["id"])
+                cache.invalidate_all()
                 st.success(
                     f"Sync complete. Inserted: {counts['inserted']}  ·  "
                     f"Updated: {counts['updated']}  ·  Skipped: {counts['skipped']}"
@@ -272,7 +276,7 @@ def render_crm_tab(firm: dict) -> None:
     _render_manual_upload(firm)
 
     # Recent pass reasons table — re-fetch in case the manual upload added rows
-    pass_reasons = db.list_pass_reasons(firm["id"])
+    pass_reasons = cache.list_pass_reasons(firm["id"])
     if pass_reasons:
         st.html('<div style="height: 24px;"></div>')
         st.html(section_label("Recent pass reasons"))

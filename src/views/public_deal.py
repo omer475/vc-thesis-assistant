@@ -15,7 +15,7 @@ from typing import Any
 import streamlit as st
 from markdown_it import MarkdownIt
 
-from src import db
+from src import cache, db
 from src.components import pretty_filename, section_label, verdict_pill
 from src.styles import (
     ASK_BG,
@@ -196,7 +196,7 @@ def render_public_deal_page(analysis_id: str) -> None:
 
     deck = analysis.get("deck") or {}
     firm_id = deck.get("firm_id")
-    firm = db.get_firm(firm_id) if firm_id else None
+    firm = cache.get_firm(firm_id) if firm_id else None
     firm_name = firm["name"] if firm else "Unknown firm"
 
     headline = (
