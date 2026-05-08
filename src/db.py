@@ -300,6 +300,57 @@ def count_deals_this_week(firm_id: str) -> int:
     return sum(1 for a in analyses if (a.get("created_at") or "") >= cutoff)
 
 
+# ----- Partners --------------------------------------------------------------
+
+
+@_resilient
+def list_partners(firm_id: str) -> list[dict]:
+    res = (
+        client()
+        .table("partners")
+        .select("*")
+        .eq("firm_id", firm_id)
+        .order("created_at", desc=False)
+        .execute()
+    )
+    return res.data or []
+
+
+@_resilient
+def insert_partner(firm_id: str, name: str | None, email: str) -> dict | None:
+    payload: dict[str, Any] = {"firm_id": firm_id, "email": email}
+    if name:
+        payload["name"] = name
+    try:
+        res = client().table("partners").insert(payload).execute()
+        return res.data[0] if res.data else None
+    except Exception as e:
+        if "duplicate key" in str(e).lower() or "23505" in str(e):
+            return None
+        raise
+
+
+@_resilient
+def delete_partner(partner_id: str) -> None:
+    client().table("partners").delete().eq("id", partner_id).execute()
+
+
+@_resilient
+def delete_document(document_id: str) -> None:
+    client().table("documents").delete().eq("id", document_id).execute()
+
+
+@_resilient
+def update_firm_affinity_config(
+    firm_id: str, api_key: str | None, passed_status_id: str | None
+) -> None:
+    payload: dict[str, Any] = {
+        "affinity_api_key": api_key,
+        "affinity_passed_status_id": passed_status_id,
+    }
+    client().table("firms").update(payload).eq("id", firm_id).execute()
+
+
 # ----- Pass reasons -----------------------------------------------------------
 
 

@@ -250,6 +250,16 @@ button[data-testid="baseButton-secondary"]:hover {{
     color: {TEXT_SECONDARY};
     font-size: 13px;
 }}
+.vc-deal-card:hover {{
+    border-color: {BORDER_HOVER} !important;
+    cursor: pointer;
+}}
+.vc-deal-card:focus {{
+    outline: none;
+    border-color: {BORDER_HOVER} !important;
+}}
+details summary::-webkit-details-marker {{ display: none; }}
+details summary {{ outline: none; }}
 </style>
 """
 

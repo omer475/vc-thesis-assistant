@@ -10,7 +10,11 @@ CSS injection.
 
 from __future__ import annotations
 
+import html
+import os
 import re
+from datetime import datetime, timezone
+from typing import Any
 
 import streamlit as st
 
@@ -19,8 +23,11 @@ from src.styles import (
     ASK_BORDER,
     ASK_DOT,
     ASK_TEXT,
+    BG_CARD,
     BG_SIDEBAR,
+    BG_TABLE_HEAD,
     BORDER_DEFAULT,
+    BORDER_HOVER,
     PASS_BG,
     PASS_BORDER,
     PASS_DOT,
@@ -34,6 +41,10 @@ from src.styles import (
     TEXT_SECONDARY,
     TEXT_TERTIARY,
 )
+
+
+def _esc(value: Any) -> str:
+    return html.escape("" if value is None else str(value), quote=True)
 
 
 # ----- Verdict pill ----------------------------------------------------------
@@ -172,3 +183,201 @@ def primary_button(label: str, *, key: str | None = None, disabled: bool = False
 def secondary_button(label: str, *, key: str | None = None, disabled: bool = False) -> bool:
     """Native secondary button styled by global CSS. Returns True when clicked."""
     return st.button(label, type="secondary", key=key, disabled=disabled)
+
+
+# ----- Time formatting -------------------------------------------------------
+
+
+def format_relative_time(iso: str | None) -> str:
+    """Format an ISO timestamp as a short relative-time label.
+
+    Examples: 'just now', '12 min ago', '3h ago', '2d ago', 'May 5'.
+    """
+    if not iso:
+        return ""
+    try:
+        dt = datetime.fromisoformat(iso.replace("Z", "+00:00"))
+    except ValueError:
+        return iso[:10]
+    now = datetime.now(timezone.utc)
+    diff = (now - dt).total_seconds()
+    if diff < 0:
+        return dt.strftime("%b %-d")
+    if diff < 60:
+        return "just now"
+    if diff < 3600:
+        return f"{int(diff // 60)} min ago"
+    if diff < 86400:
+        return f"{int(diff // 3600)}h ago"
+    if diff < 86400 * 7:
+        return f"{int(diff // 86400)}d ago"
+    return dt.strftime("%b %-d")
+
+
+# ----- Share URL -------------------------------------------------------------
+
+
+def share_url_for(analysis_id: str) -> str:
+    """Build the public deal-page URL. Reads APP_PUBLIC_URL or defaults to localhost."""
+    base = os.environ.get("APP_PUBLIC_URL", "http://localhost:8501").rstrip("/")
+    return f"{base}/?deal={analysis_id}"
+
+
+# ----- Deal card -------------------------------------------------------------
+
+
+def deal_card(deal: dict[str, Any]) -> str:
+    """A row in the Analyze tab's deal list — clickable link to ?deal=<id>.
+
+    Expects a dict with: id (analysis id), verdict, deck (joined deck row),
+    created_at, optional partner.
+    """
+    deck = deal.get("deck") or {}
+    title = (
+        deck.get("subject")
+        or deck.get("original_filename")
+        or "(unnamed deck)"
+    )
+    verdict = deal.get("verdict") or "Unknown"
+    when = format_relative_time(deal.get("created_at"))
+
+    partner_name = ""
+    partner = deal.get("partner") or {}
+    if partner:
+        partner_name = partner.get("name") or partner.get("email") or ""
+
+    bottom_parts = [p for p in (partner_name, when) if p]
+    bottom_html = " · ".join(_esc(p) for p in bottom_parts) if bottom_parts else ""
+
+    href = share_url_for(deal.get("id") or "")
+    pill = verdict_pill(verdict, "sm")
+
+    return (
+        f'<a href="{_esc(href)}" target="_self" class="vc-deal-card" '
+        f"style=\"display: block; text-decoration: none; "
+        f"background: {BG_CARD}; border: 0.5px solid {BORDER_DEFAULT}; "
+        f"border-radius: {RADIUS_MD}; padding: 14px 16px; "
+        f'margin-bottom: 8px; transition: border-color 0.12s ease;">'
+        f'<div style="display: flex; align-items: center; gap: 16px;">'
+        f'<div style="flex: 1; min-width: 0;">'
+        f'<div style="font-size: 14px; font-weight: 500; color: {TEXT_PRIMARY}; '
+        f'line-height: 1.3; margin-bottom: 4px; overflow: hidden; '
+        f'text-overflow: ellipsis; white-space: nowrap;">{_esc(title)}</div>'
+        f'<div style="font-size: 12px; color: {TEXT_TERTIARY};">{bottom_html}</div>'
+        f"</div>"
+        f'<div style="flex: 0 0 auto;">{pill}</div>'
+        f"</div>"
+        f"</a>"
+    )
+
+
+# ----- Status card -----------------------------------------------------------
+
+
+def status_card_html(
+    title: str,
+    subtitle: str = "",
+    *,
+    accent: str | None = None,
+) -> str:
+    """The shared 'state + actions' card surface used in Firm setup and CRM.
+
+    Returns the OPENING + content of the card; callers should render any action
+    buttons inside the card via Streamlit components, then close with
+    `status_card_close_html()`. We split it because Streamlit buttons can't
+    live inside a raw HTML string.
+    """
+    border = accent or BORDER_DEFAULT
+    sub_html = (
+        f'<div style="font-size: 13px; color: {TEXT_SECONDARY}; '
+        f'margin-top: 6px; line-height: 1.5;">{_esc(subtitle)}</div>'
+        if subtitle
+        else ""
+    )
+    return (
+        f'<div style="background: {BG_CARD}; border: 0.5px solid {border}; '
+        f'border-radius: {RADIUS_MD}; padding: 18px 20px;">'
+        f'<div style="font-size: 14px; font-weight: 500; color: {TEXT_PRIMARY}; '
+        f'line-height: 1.4;">{_esc(title)}</div>'
+        f"{sub_html}"
+        f"</div>"
+    )
+
+
+# ----- Metric card -----------------------------------------------------------
+
+
+def metric_card(label: str, value: str, hint: str = "") -> str:
+    hint_html = (
+        f'<div style="font-size: 11px; color: {TEXT_TERTIARY}; '
+        f'margin-top: 6px;">{_esc(hint)}</div>'
+        if hint
+        else ""
+    )
+    return (
+        f'<div style="background: {BG_SIDEBAR}; border-radius: {RADIUS_MD}; '
+        f'padding: 16px 18px;">'
+        f'<div style="font-size: 12px; color: {TEXT_SECONDARY}; '
+        f'margin-bottom: 6px;">{_esc(label)}</div>'
+        f'<div style="font-size: 22px; font-weight: 500; color: {TEXT_PRIMARY}; '
+        f'line-height: 1.1;">{_esc(value)}</div>'
+        f"{hint_html}"
+        f"</div>"
+    )
+
+
+# ----- Data table ------------------------------------------------------------
+
+
+def data_table(headers: list[str], rows: list[list[str]]) -> str:
+    """Render a styled table as HTML.
+
+    `headers` are plain strings (uppercased and tracked in CSS).
+    `rows` are lists of HTML strings — caller is responsible for any escaping
+    needed inside cell content.
+    """
+    head_cells = "".join(
+        f'<th style="text-align: left; padding: 9px 14px; '
+        f"font-size: 11px; font-weight: 500; "
+        f"text-transform: uppercase; letter-spacing: 0.04em; "
+        f'color: {TEXT_TERTIARY};">{_esc(h)}</th>'
+        for h in headers
+    )
+
+    if not rows:
+        return (
+            f'<div style="background: {BG_CARD}; border: 0.5px solid {BORDER_DEFAULT}; '
+            f"border-radius: {RADIUS_MD}; overflow: hidden;">"
+            f'<table style="width: 100%; border-collapse: collapse; '
+            f'background: {BG_TABLE_HEAD};">'
+            f"<thead><tr>{head_cells}</tr></thead></table>"
+            f'<div style="padding: 28px 16px; text-align: center; '
+            f'font-size: 13px; color: {TEXT_TERTIARY};">No rows yet.</div>'
+            f"</div>"
+        )
+
+    body_rows = []
+    for i, row in enumerate(rows):
+        is_last = i == len(rows) - 1
+        border = (
+            "" if is_last else f"border-bottom: 0.5px solid {BORDER_DEFAULT};"
+        )
+        cells = "".join(
+            f'<td style="padding: 11px 14px; font-size: 13px; '
+            f'color: {TEXT_PRIMARY}; vertical-align: middle;">{cell}</td>'
+            for cell in row
+        )
+        body_rows.append(
+            f'<tr style="{border}">{cells}</tr>'
+        )
+    body_html = "".join(body_rows)
+
+    return (
+        f'<div style="background: {BG_CARD}; border: 0.5px solid {BORDER_DEFAULT}; '
+        f"border-radius: {RADIUS_MD}; overflow: hidden;\">"
+        f'<table style="width: 100%; border-collapse: collapse;">'
+        f'<thead style="background: {BG_TABLE_HEAD};"><tr>{head_cells}</tr></thead>'
+        f"<tbody>{body_html}</tbody>"
+        f"</table>"
+        f"</div>"
+    )
