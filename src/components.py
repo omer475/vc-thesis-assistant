@@ -237,8 +237,29 @@ def format_relative_time(iso: str | None) -> str:
 
 
 def share_url_for(analysis_id: str) -> str:
-    """Build the public deal-page URL. Reads APP_PUBLIC_URL or defaults to localhost."""
-    base = os.environ.get("APP_PUBLIC_URL", "http://localhost:8501").rstrip("/")
+    """Build the public deal-page URL.
+
+    Resolution order:
+      1. APP_PUBLIC_URL env var (explicit override; useful for self-hosted)
+      2. Streamlit's current request host (auto-detected from headers; works
+         on Streamlit Cloud and any reverse-proxy that sets X-Forwarded-Proto)
+      3. http://localhost:8501 (last-resort fallback for local dev)
+    """
+    base = os.environ.get("APP_PUBLIC_URL", "").rstrip("/")
+    if not base:
+        try:
+            headers = st.context.headers or {}
+            host = headers.get("host", "")
+            if host:
+                scheme = headers.get(
+                    "x-forwarded-proto",
+                    "https" if ".streamlit" in host else "http",
+                )
+                base = f"{scheme}://{host}"
+        except Exception:
+            pass
+    if not base:
+        base = "http://localhost:8501"
     return f"{base}/?deal={analysis_id}"
 
 
