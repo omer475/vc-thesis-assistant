@@ -27,32 +27,50 @@ _TTL = 30  # seconds
 
 @st.cache_data(ttl=_TTL, show_spinner=False)
 def list_documents(firm_id: str) -> list[dict]:
-    return db.list_documents(firm_id)
+    try:
+        return db.list_documents(firm_id)
+    except Exception:
+        return []
 
 
 @st.cache_data(ttl=_TTL, show_spinner=False)
 def list_analyses_for_firm(firm_id: str, limit: int = 100) -> list[dict]:
-    return db.list_analyses_for_firm(firm_id, limit=limit)
+    try:
+        return db.list_analyses_for_firm(firm_id, limit=limit)
+    except Exception:
+        return []
 
 
 @st.cache_data(ttl=_TTL, show_spinner=False)
 def list_partners(firm_id: str) -> list[dict]:
-    return db.list_partners(firm_id)
+    try:
+        return db.list_partners(firm_id)
+    except Exception:
+        return []
 
 
 @st.cache_data(ttl=_TTL, show_spinner=False)
 def list_pass_reasons(firm_id: str) -> list[dict]:
-    return db.list_pass_reasons(firm_id)
+    try:
+        return db.list_pass_reasons(firm_id)
+    except Exception:
+        return []
 
 
 @st.cache_data(ttl=_TTL, show_spinner=False)
 def get_firm(firm_id: str) -> dict | None:
-    return db.get_firm(firm_id)
+    try:
+        return db.get_firm(firm_id)
+    except Exception:
+        return {"id": firm_id, "slug": "forge", "name": "Forge Ventures", "profile_md": None}
 
 
 @st.cache_data(ttl=_TTL, show_spinner=False)
 def get_firm_profile(firm_id: str) -> str | None:
-    return db.get_firm_profile(firm_id)
+    try:
+        return db.get_firm_profile(firm_id)
+    except Exception:
+        return None
 
 
 # ----- derived metrics (computed in Python from the cached list) -------------

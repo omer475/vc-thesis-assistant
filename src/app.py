@@ -39,7 +39,6 @@ except Exception:
     pass
 
 from dotenv import load_dotenv
-from streamlit_option_menu import option_menu
 
 from src import bootstrap, cache, db
 from src.styles import (
@@ -50,10 +49,14 @@ from src.styles import (
 from src.views.analytics import render_analytics_tab
 from src.views.analyze import render_analyze_tab
 from src.views.crm import render_crm_tab
-from src.views.firm_setup import render_firm_setup_tab
+from src.views.firm_setup import render_firm_setup_tab as render_investor_profile_tab
+from src.views.onboarding import (
+    get_onboarding_data,
+    is_onboarding_complete,
+    render_onboarding,
+)
 from src.views.partners import render_partners_tab
 from src.views.public_deal import render_public_deal_page
-from src.views.settings import render_settings_tab
 
 load_dotenv()
 
@@ -115,16 +118,73 @@ def _require_password() -> None:
 _require_password()
 
 
+# ----- onboarding gate -------------------------------------------------------
+# First-run: capture firm name, thesis, CRM choice. Once completed, the
+# onboarding data populates the rest of the app.
+
+if not is_onboarding_complete():
+    render_onboarding()
+    st.stop()
+
+
 # ----- sidebar ---------------------------------------------------------------
+
+
+# (label, tabler icon class)
+_NAV_ITEMS = [
+    ("Analyze", "ti-activity"),
+    ("Investor profile", "ti-user"),
+    ("Partners", "ti-users"),
+    ("CRM", "ti-affiliate"),
+    ("Analytics", "ti-chart-line"),
+]
+
+
+def _render_sidebar_nav() -> str:
+    """Render the sidebar nav as native Streamlit buttons (no iframe).
+
+    session_state preserves selection across reruns — critical, otherwise
+    every click resets onboarding state. Active item uses `type="primary"`
+    so CSS can distinguish it; icons render in a thin column on the left.
+    """
+    selected = st.session_state.setdefault("_nav_selected", "Analyze")
+
+    for label, icon in _NAV_ITEMS:
+        is_active = label == selected
+        icon_color = "#9AB8A8" if is_active else "#A8ADAB"
+
+        col_icon, col_btn = st.columns([1, 7], gap="small")
+        with col_icon:
+            st.html(
+                f'<div style="display: flex; align-items: center; '
+                f'justify-content: center; height: 40px;">'
+                f'<i class="ti {icon}" style="font-size: 16px; '
+                f'color: {icon_color};"></i>'
+                f"</div>"
+            )
+        with col_btn:
+            if st.button(
+                label,
+                key=f"_nav_{label}",
+                use_container_width=True,
+                type="primary" if is_active else "secondary",
+            ):
+                st.session_state["_nav_selected"] = label
+                st.rerun()
+
+    return selected
 
 
 def _firm_header_html(firm: dict) -> str:
     return (
-        f'<div style="margin-bottom: 16px;">'
-        f'<div style="font-size: 14px; font-weight: 500; color: {TEXT_PRIMARY}; '
-        f'line-height: 1.3;">{firm["name"]}</div>'
-        f'<div style="font-size: 11px; color: {TEXT_SECONDARY}; margin-top: 2px;">'
-        f'{firm["slug"]}.thesis.ai</div>'
+        f'<div style="margin: 0 0 18px 8px; padding-bottom: 16px; '
+        f'border-bottom: 1px solid rgba(255, 255, 255, 0.06);">'
+        f'<div style="font-family: \'Cormorant Garamond\', Georgia, serif; '
+        f'font-size: 20px; font-weight: 500; color: {TEXT_PRIMARY}; '
+        f'line-height: 1.2; letter-spacing: -0.01em;">{firm["name"]}</div>'
+        f'<div style="font-size: 10px; color: {TEXT_SECONDARY}; '
+        f'margin-top: 4px; letter-spacing: 0.1em; text-transform: uppercase;">'
+        f'Thesis assistant</div>'
         f"</div>"
     )
 
@@ -140,9 +200,10 @@ def _status_block_html(firm_id: str) -> str:
         chars_label = f"{total_chars} chars"
 
     return (
-        f'<div style="margin-top: 32px;">'
+        f'<div style="margin-top: 40px; padding-top: 20px; '
+        f'border-top: 1px solid rgba(255, 255, 255, 0.06);">'
         f'<div class="vc-section-label">Status</div>'
-        f'<div style="font-size: 11px; color: {TEXT_SECONDARY}; line-height: 1.7;">'
+        f'<div style="font-size: 12px; color: {TEXT_SECONDARY}; line-height: 2;">'
         f"{n_docs} docs · {chars_label}<br>"
         f"Not connected<br>"
         f"{n_deals_week} deals this week"
@@ -151,35 +212,28 @@ def _status_block_html(firm_id: str) -> str:
     )
 
 
-firm = cache.get_firm(FIRM_ID) or db.get_or_create_default_firm()
+firm = cache.get_firm(FIRM_ID) or {"id": FIRM_ID, "slug": "forge", "name": "Forge Ventures", "profile_md": None}
+
+# Overlay onboarding data so renamed firm propagates everywhere
+_onb = get_onboarding_data()
+if _onb.get("company_name"):
+    firm = {**firm, "name": _onb["company_name"]}
+    if _onb.get("investment_thesis") or _onb.get("company_info"):
+        # Build a minimal profile from onboarding if none exists
+        if not firm.get("profile_md"):
+            parts = []
+            if _onb.get("company_name"):
+                parts.append(f"# {_onb['company_name']}")
+            if _onb.get("company_info"):
+                parts.append(f"## About\n\n{_onb['company_info']}")
+            if _onb.get("investment_thesis"):
+                parts.append(f"## Investment thesis\n\n{_onb['investment_thesis']}")
+            firm = {**firm, "profile_md": "\n\n".join(parts)}
 
 with st.sidebar:
     st.html(_firm_header_html(firm))
 
-    selected = option_menu(
-        menu_title=None,
-        options=["Analyze", "Firm setup", "Partners", "CRM", "Analytics", "Settings"],
-        icons=["bullseye", "file-text", "people", "plug", "bar-chart", "gear"],
-        default_index=0,
-        styles={
-            "container": {"padding": "0", "background": "transparent"},
-            "icon": {"font-size": "15px", "color": TEXT_SECONDARY},
-            "nav-link": {
-                "font-size": "13px",
-                "color": TEXT_SECONDARY,
-                "padding": "7px 10px",
-                "border-radius": "8px",
-                "margin": "0 0 2px 0",
-                "text-align": "left",
-                "--hover-color": "rgba(255, 255, 255, 0.5)",
-            },
-            "nav-link-selected": {
-                "background": "#FFFFFF",
-                "color": TEXT_PRIMARY,
-                "font-weight": "500",
-            },
-        },
-    )
+    selected = _render_sidebar_nav()
 
     st.html(_status_block_html(FIRM_ID))
 
@@ -188,11 +242,10 @@ with st.sidebar:
 
 _DISPATCH = {
     "Analyze": render_analyze_tab,
-    "Firm setup": render_firm_setup_tab,
+    "Investor profile": render_investor_profile_tab,
     "Partners": render_partners_tab,
     "CRM": render_crm_tab,
     "Analytics": render_analytics_tab,
-    "Settings": render_settings_tab,
 }
 
 _render_fn = _DISPATCH.get(selected, render_analyze_tab)

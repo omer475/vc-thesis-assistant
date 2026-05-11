@@ -250,8 +250,9 @@ def _render_profile_section(firm: dict) -> None:
 
 def render_firm_setup_tab(firm: dict) -> None:
     page_header(
-        title="Firm setup",
-        subtitle="The corpus and profile that ground every analysis.",
+        title="Investor profile",
+        subtitle="The thesis and corpus that ground every analysis.",
     )
-    _render_documents_section(firm)
     _render_profile_section(firm)
+    st.html('<div style="height: 36px;"></div>')
+    _render_documents_section(firm)

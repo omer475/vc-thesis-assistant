@@ -16,11 +16,12 @@ import pandas as pd
 import streamlit as st
 
 from src import cache, db
-from src.components import esc_html, data_table, metric_card, section_label
+from src.components import deal_card, esc_html, data_table, metric_card, section_label
 from src.styles import (
     ASK_DOT,
     BG_CARD,
     BORDER_DEFAULT,
+    FONT_SERIF,
     PASS_DOT,
     RADIUS_MD,
     TAKE_DOT,
@@ -64,10 +65,19 @@ def _verdict_mix_html(counts: dict[str, int]) -> str:
 
 
 def render_analytics_tab(firm: dict) -> None:
-    page_header(title="Analytics", subtitle=f"Past {WINDOW_DAYS} days.")
+    page_header(
+        title="Analytics",
+        subtitle=f"Verdict mix, throughput, and partner activity over the past {WINDOW_DAYS} days.",
+    )
 
     cutoff = (datetime.now(timezone.utc) - timedelta(days=WINDOW_DAYS)).isoformat()
-    all_analyses = cache.list_analyses_for_firm(firm["id"], limit=500)
+    # Combine DB + session-state analyses so local mock data shows up too
+    try:
+        db_rows = cache.list_analyses_for_firm(firm["id"], limit=500) or []
+    except Exception:
+        db_rows = []
+    local_rows = (st.session_state.get("_analyze_local_store") or {}).get(firm["id"], [])
+    all_analyses = local_rows + db_rows
     window = [a for a in all_analyses if (a.get("created_at") or "") >= cutoff]
 
     # Metrics
@@ -104,14 +114,16 @@ def render_analytics_tab(firm: dict) -> None:
             # metric_card normally escapes value, but the verdict-mix value is
             # raw HTML — render that one inline; everything else via card.
             if label == "Verdict mix":
+                from src.styles import BG_CARD as _BG, BORDER_DEFAULT as _BD
                 st.html(
-                    f'<div style="background: #F4F3EE; border-radius: {RADIUS_MD}; '
-                    f'padding: 16px 18px;">'
-                    f'<div style="font-size: 12px; color: {TEXT_SECONDARY}; '
-                    f'margin-bottom: 6px;">{label}</div>'
+                    f'<div style="background: {_BG}; border: 1px solid {_BD}; '
+                    f'border-radius: {RADIUS_MD}; padding: 22px 24px;">'
+                    f'<div style="font-size: 11px; color: {TEXT_TERTIARY}; '
+                    f'margin-bottom: 10px; letter-spacing: 0.12em; '
+                    f'text-transform: uppercase; font-weight: 500;">{label}</div>'
                     f"<div>{value}</div>"
                     f'<div style="font-size: 11px; color: {TEXT_TERTIARY}; '
-                    f'margin-top: 6px;">{hint}</div>'
+                    f'margin-top: 10px; letter-spacing: 0.02em;">{hint}</div>'
                     f"</div>"
                 )
             else:
@@ -136,7 +148,7 @@ def render_analytics_tab(firm: dict) -> None:
                 "deals": [per_day.get(d.isoformat(), 0) for d in days],
             }
         )
-        st.line_chart(df, x="date", y="deals", height=200, color="#1A1A1A")
+        st.line_chart(df, x="date", y="deals", height=220, color="#9AB8A8")
     else:
         st.html(
             f'<div style="background: {BG_CARD}; border: 0.5px solid {BORDER_DEFAULT}; '
@@ -149,7 +161,10 @@ def render_analytics_tab(firm: dict) -> None:
     # By-partner table
     st.html('<div style="height: 28px;"></div>')
     st.html(section_label("By partner"))
-    partners = cache.list_partners(firm["id"])
+    try:
+        partners = cache.list_partners(firm["id"]) or []
+    except Exception:
+        partners = []
 
     by_partner: dict[str | None, list[dict]] = defaultdict(list)
     for a in window:
@@ -158,32 +173,50 @@ def render_analytics_tab(firm: dict) -> None:
 
     if not by_partner:
         st.html(
-            f'<div style="background: {BG_CARD}; border: 0.5px solid {BORDER_DEFAULT}; '
+            f'<div style="background: {BG_CARD}; border: 1px solid {BORDER_DEFAULT}; '
             f"border-radius: {RADIUS_MD}; padding: 24px; text-align: center; "
             f'font-size: 13px; color: {TEXT_TERTIARY};">'
             f"No partner activity in this window."
             f"</div>"
         )
-        return
+    else:
+        partner_lookup = {p["id"]: p for p in partners}
+        rows = []
+        for partner_id, items in sorted(by_partner.items(), key=lambda x: -len(x[1])):
+            if partner_id is None:
+                name = "Unassigned"
+            else:
+                p = partner_lookup.get(partner_id, {})
+                name = p.get("name") or p.get("email") or "Unknown"
+            v_counts: dict[str, int] = defaultdict(int)
+            for a in items:
+                v_counts[a.get("verdict") or "Unknown"] += 1
+            last_at = max((a.get("created_at") or "") for a in items)
+            rows.append(
+                [
+                    esc_html(name),
+                    str(len(items)),
+                    _verdict_mix_html(v_counts),
+                    f'<span style="color: {TEXT_SECONDARY};">{last_at[:10]}</span>',
+                ]
+            )
+        st.html(data_table(["Partner", "Deals", "Verdict mix", "Last activity"], rows))
 
-    partner_lookup = {p["id"]: p for p in partners}
-    rows = []
-    for partner_id, items in sorted(by_partner.items(), key=lambda x: -len(x[1])):
-        if partner_id is None:
-            name = "Unassigned"
-        else:
-            p = partner_lookup.get(partner_id, {})
-            name = p.get("name") or p.get("email") or "Unknown"
-        v_counts: dict[str, int] = defaultdict(int)
-        for a in items:
-            v_counts[a.get("verdict") or "Unknown"] += 1
-        last_at = max((a.get("created_at") or "") for a in items)
-        rows.append(
-            [
-                esc_html(name),
-                str(len(items)),
-                _verdict_mix_html(v_counts),
-                f'<span style="color: {TEXT_SECONDARY};">{last_at[:10]}</span>',
-            ]
+    # ----- Recent deals (moved here from the Analyze tab) -----
+    st.html('<div style="height: 36px;"></div>')
+    st.html(section_label("Recent deals"))
+    if not all_analyses:
+        st.html(
+            f'<div style="background: {BG_CARD}; border: 1px solid {BORDER_DEFAULT}; '
+            f"border-radius: {RADIUS_MD}; padding: 40px; text-align: center; "
+            f'line-height: 1.7;">'
+            f'<div style="font-family: {FONT_SERIF}; font-size: 18px; color: {TEXT_PRIMARY}; '
+            f'margin-bottom: 6px;">No deals analyzed yet</div>'
+            f'<div style="font-size: 14px; color: {TEXT_SECONDARY};">'
+            f"Head to the <span style=\"color: {TEXT_PRIMARY};\">Analyze</span> tab to "
+            f"triage your first deck."
+            f"</div></div>"
         )
-    st.html(data_table(["Partner", "Deals", "Verdict mix", "Last activity"], rows))
+        return
+    cards_html = "".join(deal_card(a) for a in all_analyses[:50])
+    st.html(cards_html)

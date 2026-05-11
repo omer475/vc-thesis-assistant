@@ -11,6 +11,7 @@ import streamlit as st
 from src.styles import (
     BG_CARD,
     BORDER_DEFAULT,
+    FONT_SERIF,
     RADIUS_MD,
     TEXT_PRIMARY,
     TEXT_SECONDARY,
@@ -25,15 +26,16 @@ def page_header(title: str, subtitle: str = "") -> None:
     its own using `st.columns` and the title HTML side-by-side.
     """
     sub_html = (
-        f'<p style="font-size: 13px; color: {TEXT_SECONDARY}; '
-        f'margin: 0; line-height: 1.5;">{subtitle}</p>'
+        f'<p style="font-size: 15px; color: {TEXT_SECONDARY}; '
+        f'margin: 0; line-height: 1.6; font-weight: 300;">{subtitle}</p>'
         if subtitle
         else ""
     )
     st.html(
-        f'<div style="margin-bottom: 28px;">'
-        f'<h1 style="font-size: 22px; font-weight: 500; color: {TEXT_PRIMARY}; '
-        f'margin: 0 0 4px 0; line-height: 1.3;">{title}</h1>'
+        f'<div style="margin-bottom: 40px;">'
+        f'<h1 style="font-family: {FONT_SERIF}; font-size: 38px; font-weight: 500; '
+        f'color: {TEXT_PRIMARY}; margin: 0 0 10px 0; line-height: 1.2; '
+        f'letter-spacing: -0.01em;">{title}</h1>'
         f"{sub_html}"
         f"</div>"
     )

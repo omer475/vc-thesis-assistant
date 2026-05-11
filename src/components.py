@@ -38,20 +38,27 @@ __all__ = [
 ]
 
 from src.styles import (
+    ACCENT,
+    ACCENT_DARK,
     ASK_BG,
     ASK_BORDER,
     ASK_DOT,
     ASK_TEXT,
     BG_CARD,
+    BG_ELEVATED,
     BG_SIDEBAR,
     BG_TABLE_HEAD,
     BORDER_DEFAULT,
     BORDER_HOVER,
+    FONT_SANS,
+    FONT_SERIF,
     PASS_BG,
     PASS_BORDER,
     PASS_DOT,
     PASS_TEXT,
     RADIUS_MD,
+    RADIUS_SM,
+    SHADOW_SOFT,
     TAKE_BG,
     TAKE_BORDER,
     TAKE_DOT,
@@ -295,15 +302,15 @@ def deal_card(deal: dict[str, Any]) -> str:
     return (
         f'<a href="{esc_html(href)}" target="_self" class="vc-deal-card" '
         f"style=\"display: block; text-decoration: none; "
-        f"background: {BG_CARD}; border: 0.5px solid {BORDER_DEFAULT}; "
-        f"border-radius: {RADIUS_MD}; padding: 14px 16px; "
-        f'margin-bottom: 8px; transition: border-color 0.12s ease;">'
-        f'<div style="display: flex; align-items: center; gap: 16px;">'
+        f"background: {BG_CARD}; border: 1px solid {BORDER_DEFAULT}; "
+        f"border-radius: {RADIUS_MD}; padding: 18px 22px; "
+        f'margin-bottom: 12px;">'
+        f'<div style="display: flex; align-items: center; gap: 18px;">'
         f'<div style="flex: 1; min-width: 0;">'
-        f'<div style="font-size: 14px; font-weight: 500; color: {TEXT_PRIMARY}; '
-        f'line-height: 1.3; margin-bottom: 4px; overflow: hidden; '
+        f'<div style="font-family: {FONT_SERIF}; font-size: 18px; font-weight: 500; color: {TEXT_PRIMARY}; '
+        f'line-height: 1.3; margin-bottom: 6px; overflow: hidden; '
         f'text-overflow: ellipsis; white-space: nowrap;">{esc_html(title)}</div>'
-        f'<div style="font-size: 12px; color: {TEXT_TERTIARY};">{bottom_html}</div>'
+        f'<div style="font-size: 12px; color: {TEXT_TERTIARY}; letter-spacing: 0.02em;">{bottom_html}</div>'
         f"</div>"
         f'<div style="flex: 0 0 auto;">{pill}</div>'
         f"</div>"
@@ -329,16 +336,16 @@ def status_card_html(
     """
     border = accent or BORDER_DEFAULT
     sub_html = (
-        f'<div style="font-size: 13px; color: {TEXT_SECONDARY}; '
-        f'margin-top: 6px; line-height: 1.5;">{esc_html(subtitle)}</div>'
+        f'<div style="font-size: 14px; color: {TEXT_SECONDARY}; '
+        f'margin-top: 8px; line-height: 1.6;">{esc_html(subtitle)}</div>'
         if subtitle
         else ""
     )
     return (
-        f'<div style="background: {BG_CARD}; border: 0.5px solid {border}; '
-        f'border-radius: {RADIUS_MD}; padding: 18px 20px;">'
-        f'<div style="font-size: 14px; font-weight: 500; color: {TEXT_PRIMARY}; '
-        f'line-height: 1.4;">{esc_html(title)}</div>'
+        f'<div style="background: {BG_CARD}; border: 1px solid {border}; '
+        f'border-radius: {RADIUS_MD}; padding: 24px 26px;">'
+        f'<div style="font-family: {FONT_SERIF}; font-size: 20px; font-weight: 500; color: {TEXT_PRIMARY}; '
+        f'line-height: 1.3;">{esc_html(title)}</div>'
         f"{sub_html}"
         f"</div>"
     )
@@ -350,16 +357,16 @@ def status_card_html(
 def metric_card(label: str, value: str, hint: str = "") -> str:
     hint_html = (
         f'<div style="font-size: 11px; color: {TEXT_TERTIARY}; '
-        f'margin-top: 6px;">{esc_html(hint)}</div>'
+        f'margin-top: 8px; letter-spacing: 0.02em;">{esc_html(hint)}</div>'
         if hint
         else ""
     )
     return (
-        f'<div style="background: {BG_SIDEBAR}; border-radius: {RADIUS_MD}; '
-        f'padding: 16px 18px;">'
-        f'<div style="font-size: 12px; color: {TEXT_SECONDARY}; '
-        f'margin-bottom: 6px;">{esc_html(label)}</div>'
-        f'<div style="font-size: 22px; font-weight: 500; color: {TEXT_PRIMARY}; '
+        f'<div style="background: {BG_CARD}; border: 1px solid {BORDER_DEFAULT}; '
+        f'border-radius: {RADIUS_MD}; padding: 22px 24px;">'
+        f'<div style="font-size: 11px; color: {TEXT_TERTIARY}; '
+        f'margin-bottom: 10px; letter-spacing: 0.12em; text-transform: uppercase; font-weight: 500;">{esc_html(label)}</div>'
+        f'<div style="font-family: {FONT_SERIF}; font-size: 32px; font-weight: 500; color: {TEXT_PRIMARY}; '
         f'line-height: 1.1;">{esc_html(value)}</div>'
         f"{hint_html}"
         f"</div>"
@@ -377,21 +384,21 @@ def data_table(headers: list[str], rows: list[list[str]]) -> str:
     needed inside cell content.
     """
     head_cells = "".join(
-        f'<th style="text-align: left; padding: 9px 14px; '
+        f'<th style="text-align: left; padding: 14px 18px; '
         f"font-size: 11px; font-weight: 500; "
-        f"text-transform: uppercase; letter-spacing: 0.04em; "
+        f"text-transform: uppercase; letter-spacing: 0.12em; "
         f'color: {TEXT_TERTIARY};">{esc_html(h)}</th>'
         for h in headers
     )
 
     if not rows:
         return (
-            f'<div style="background: {BG_CARD}; border: 0.5px solid {BORDER_DEFAULT}; '
+            f'<div style="background: {BG_CARD}; border: 1px solid {BORDER_DEFAULT}; '
             f'border-radius: {RADIUS_MD}; overflow: hidden;">'
             f'<table style="width: 100%; border-collapse: collapse; '
             f'background: {BG_TABLE_HEAD};">'
             f"<thead><tr>{head_cells}</tr></thead></table>"
-            f'<div style="padding: 28px 16px; text-align: center; '
+            f'<div style="padding: 36px 18px; text-align: center; '
             f'font-size: 13px; color: {TEXT_TERTIARY};">No rows yet.</div>'
             f"</div>"
         )
@@ -400,10 +407,10 @@ def data_table(headers: list[str], rows: list[list[str]]) -> str:
     for i, row in enumerate(rows):
         is_last = i == len(rows) - 1
         border = (
-            "" if is_last else f"border-bottom: 0.5px solid {BORDER_DEFAULT};"
+            "" if is_last else f"border-bottom: 1px solid {BORDER_DEFAULT};"
         )
         cells = "".join(
-            f'<td style="padding: 11px 14px; font-size: 13px; '
+            f'<td style="padding: 14px 18px; font-size: 14px; '
             f'color: {TEXT_PRIMARY}; vertical-align: middle;">{cell}</td>'
             for cell in row
         )
@@ -413,7 +420,7 @@ def data_table(headers: list[str], rows: list[list[str]]) -> str:
     body_html = "".join(body_rows)
 
     return (
-        f'<div style="background: {BG_CARD}; border: 0.5px solid {BORDER_DEFAULT}; '
+        f'<div style="background: {BG_CARD}; border: 1px solid {BORDER_DEFAULT}; '
         f'border-radius: {RADIUS_MD}; overflow: hidden;">'
         f'<table style="width: 100%; border-collapse: collapse;">'
         f'<thead style="background: {BG_TABLE_HEAD};"><tr>{head_cells}</tr></thead>'

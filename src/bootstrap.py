@@ -49,16 +49,28 @@ def run() -> dict:
       - On first run (firm has 0 documents) AND committed example fixtures
         exist in the repo: ingest the fixtures so the demo isn't empty.
       - Always a no-op for repeat runs.
+      - Falls back to mock data if Supabase is unavailable (for UI testing).
     """
     ensure_dirs()
-    firm = db.get_or_create_default_firm()
-    seeded = _seed_documents_if_empty(firm["id"])
-    return {
-        "firm_id": firm["id"],
-        "firm_slug": firm["slug"],
-        "documents_seeded": seeded,
-        "documents_total": db.count_documents(firm["id"]),
-    }
+    try:
+        firm = db.get_or_create_default_firm()
+        seeded = _seed_documents_if_empty(firm["id"])
+        return {
+            "firm_id": firm["id"],
+            "firm_slug": firm["slug"],
+            "documents_seeded": seeded,
+            "documents_total": db.count_documents(firm["id"]),
+        }
+    except Exception as e:
+        # Supabase is unavailable — return mock data for UI testing
+        import sys
+        print(f"[Warning] Supabase unavailable ({type(e).__name__}). Using mock data.", file=sys.stderr)
+        return {
+            "firm_id": "mock-firm-id",
+            "firm_slug": "forge",
+            "documents_seeded": 0,
+            "documents_total": 0,
+        }
 
 
 if __name__ == "__main__":

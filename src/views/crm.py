@@ -29,6 +29,7 @@ from src.styles import (
     BG_CARD,
     BORDER_DEFAULT,
     RADIUS_MD,
+    TEXT_PRIMARY,
     TEXT_SECONDARY,
 )
 from src.views._helpers import page_header
@@ -157,6 +158,113 @@ def _last_sync_label(pass_reasons: list[dict]) -> str:
     return format_relative_time(most_recent)
 
 
+_SPECTRE_KEY = "_crm_spectre_local"
+
+
+def _render_spectre_tab(firm: dict) -> None:
+    """Spectre integration UI. Connector stub stored in session_state until
+    a server-side spectre module exists."""
+    store = st.session_state.setdefault(_SPECTRE_KEY, {})
+    connected = bool(store.get("api_key"))
+
+    if not connected:
+        st.html(
+            status_card_html(
+                title="Not connected to Spectre",
+                subtitle=(
+                    "Connect Spectre to pull deal history and pass reasons. "
+                    "Generate an API key from your Spectre workspace settings."
+                ),
+            )
+        )
+        connect_col, _ = st.columns([1, 4])
+        with connect_col:
+            if st.button("Connect Spectre", type="primary", key="_crm_sp_connect"):
+                st.session_state["_crm_sp_open"] = True
+                st.rerun()
+
+        if st.session_state.get("_crm_sp_open"):
+            st.html(
+                f'<div style="background: {BG_CARD}; border: 1px solid {BORDER_DEFAULT}; '
+                f'border-radius: {RADIUS_MD}; padding: 18px 20px; margin: 12px 0;">'
+                f'<div class="vc-section-label" style="margin-bottom: 12px;">'
+                f"Connect Spectre</div>"
+                f'<div style="font-size: 13px; color: {TEXT_SECONDARY}; line-height: 1.6;">'
+                f"Paste your Spectre API key and workspace ID. We use these to fetch deal "
+                f"history scoped to your workspace."
+                f"</div>"
+                f"</div>"
+            )
+            api_key = st.text_input("API key", type="password", key="_crm_sp_api")
+            workspace_id = st.text_input("Workspace ID", key="_crm_sp_ws")
+
+            save_col, cancel_col, _ = st.columns([1, 1, 4])
+            with save_col:
+                save_clicked = st.button("Save", type="primary", key="_crm_sp_save")
+            with cancel_col:
+                if st.button("Cancel", type="secondary", key="_crm_sp_cancel"):
+                    st.session_state["_crm_sp_open"] = False
+                    st.rerun()
+            if save_clicked:
+                if not api_key or not workspace_id:
+                    st.error("Both fields are required.")
+                else:
+                    store["api_key"] = api_key.strip()
+                    store["workspace_id"] = workspace_id.strip()
+                    st.session_state["_crm_sp_open"] = False
+                    st.success(
+                        "Saved. Spectre sync is queued — the live connector "
+                        "ships in Phase 2."
+                    )
+                    st.rerun()
+    else:
+        st.html(
+            status_card_html(
+                title="Connected to Spectre",
+                subtitle=(
+                    f"Workspace {store.get('workspace_id', '—')} · "
+                    "Live sync arrives in Phase 2."
+                ),
+            )
+        )
+        sync_col, dis_col, _ = st.columns([1, 1, 4])
+        with sync_col:
+            if st.button("Sync now", type="primary", key="_crm_sp_sync", disabled=True):
+                pass
+            st.html(
+                f'<div style="font-size: 11px; color: {TEXT_SECONDARY}; '
+                f'margin-top: 6px;">Connector under development</div>'
+            )
+        with dis_col:
+            if st.button("Disconnect", type="secondary", key="_crm_sp_disconnect"):
+                st.session_state[_SPECTRE_KEY] = {}
+                st.success("Disconnected.")
+                st.rerun()
+
+    # Manual upload — always available even without CRM
+    _render_manual_upload(firm)
+
+    # Recent pass reasons (from manual + any future Spectre sync)
+    try:
+        pass_reasons = cache.list_pass_reasons(firm["id"])
+    except Exception:
+        pass_reasons = []
+    if pass_reasons:
+        st.html('<div style="height: 24px;"></div>')
+        st.html(section_label("Recent pass reasons"))
+        rows = []
+        for p in pass_reasons[:50]:
+            rows.append(
+                [
+                    esc_html(p.get("company_name") or "—"),
+                    esc_html(_truncate(p.get("reason_text"), 80)),
+                    esc_html(p.get("deal_date") or "—"),
+                    f'<span style="color: {TEXT_SECONDARY};">{esc_html(p.get("source") or "")}</span>',
+                ]
+            )
+        st.html(data_table(["Company", "Reason snippet", "Date", "Source"], rows))
+
+
 def _render_connect_form(firm: dict) -> bool:
     """Inline form for entering Affinity creds. Returns True if saved."""
     st.html(
@@ -206,14 +314,63 @@ def _render_connect_form(firm: dict) -> bool:
     return False
 
 
+CRM_OVERRIDE_KEY = "_crm_runtime_override"
+
+
+def _current_crm_choice() -> str:
+    """Resolve the active CRM: runtime override → onboarding → default."""
+    override = st.session_state.get(CRM_OVERRIDE_KEY)
+    if override in ("Affinity", "Spectre"):
+        return override
+    from src.views.onboarding import get_onboarding_data
+    onb = get_onboarding_data()
+    chosen = onb.get("crm")
+    if chosen in ("Affinity", "Spectre"):
+        return chosen
+    return "Affinity"
+
+
+def _render_crm_switcher(active: str) -> None:
+    """Small inline switcher so the user can change CRM at runtime without
+    redoing onboarding."""
+    other = "Spectre" if active == "Affinity" else "Affinity"
+    st.html(
+        f'<div style="display: flex; align-items: center; gap: 12px; '
+        f'margin-bottom: 24px; padding: 14px 18px; background: {BG_CARD}; '
+        f'border: 1px solid {BORDER_DEFAULT}; border-radius: 8px;">'
+        f'<i class="ti ti-info-circle" style="font-size: 16px; color: {TEXT_SECONDARY};"></i>'
+        f'<div style="flex: 1; font-size: 13px; color: {TEXT_SECONDARY}; line-height: 1.5;">'
+        f"Currently configured for <span style=\"color: {TEXT_PRIMARY}; font-weight: 500;\">"
+        f"{active}</span>. You can switch at any time."
+        f"</div></div>"
+    )
+    col_switch, _ = st.columns([1, 4])
+    with col_switch:
+        if st.button(f"Switch to {other}", type="secondary", key="_crm_switch_btn"):
+            st.session_state[CRM_OVERRIDE_KEY] = other
+            st.rerun()
+
+
 def render_crm_tab(firm: dict) -> None:
+    crm_name = _current_crm_choice()
+
     page_header(
         title="CRM",
-        subtitle="Sync pass reasons from your CRM into the firm corpus.",
+        subtitle=f"Sync pass reasons from {crm_name} into your firm corpus.",
     )
 
+    _render_crm_switcher(crm_name)
+
+    # Spectre branch — stub UI until backend connector exists
+    if crm_name == "Spectre":
+        _render_spectre_tab(firm)
+        return
+
     # Reload firm to get latest config
-    firm = cache.get_firm(firm["id"]) or firm
+    try:
+        firm = cache.get_firm(firm["id"]) or firm
+    except Exception:
+        pass
     is_connected = bool(
         firm.get("affinity_api_key") and firm.get("affinity_passed_status_id")
     )
