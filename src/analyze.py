@@ -147,6 +147,24 @@ USER_PROMPT_TEMPLATE = (
     "Remember: VERDICT must be one of Take meeting | Pass | Ask first."
 )
 
+# Persona-conditioned weighting clauses. Appended as an extra system block
+# when the caller specifies an analyst persona, so the same deck can be
+# read through three different lenses. Unknown personas are ignored.
+PERSONA_CLAUSES: dict[str, str] = {
+    "Strategic Lead": (
+        "Weight your reasoning toward thesis fit and portfolio coherence. "
+        "Be skeptical of standalone wins that don't compound with existing investments."
+    ),
+    "Market Analyst": (
+        "Weight your reasoning toward market size, competitive dynamics, and timing. "
+        "Be skeptical of strong founders in weak markets."
+    ),
+    "Founder Specialist": (
+        "Weight your reasoning toward founder-market fit, prior execution, and team formation. "
+        "Be skeptical of strong markets with weak founders."
+    ),
+}
+
 DELIMITER = "---FULL-MEMO-BELOW---"
 
 
@@ -276,6 +294,7 @@ def analyze_deck(
     profile_text: str,
     corpus_text: str,
     *,
+    analyst_persona: str | None = None,
     stream_callback: Callable[[str], None] | None = None,
     client: anthropic.Anthropic | None = None,
 ) -> dict[str, Any]:
@@ -284,26 +303,36 @@ def analyze_deck(
     If stream_callback is provided, it's invoked with each text delta as the
     response streams in. The streaming itself is always used (avoids long-
     running-request HTTP timeouts).
+
+    If analyst_persona matches a known key in PERSONA_CLAUSES, an extra
+    system block tilts the reasoning per that persona. Unknown or None
+    personas leave the prompt untouched.
     """
     client = client or anthropic.Anthropic()
     chunks: list[str] = []
     started_at = time.monotonic()
 
+    persona_clause = PERSONA_CLAUSES.get(analyst_persona or "")
+    system_blocks: list[dict[str, Any]] = [{"type": "text", "text": INSTRUCTIONS}]
+    if persona_clause:
+        system_blocks.append({
+            "type": "text",
+            "text": f"<analyst_persona name=\"{analyst_persona}\">\n{persona_clause}\n</analyst_persona>",
+        })
+    system_blocks.append({
+        "type": "text",
+        "text": (
+            f"<firm_profile>\n{profile_text}\n</firm_profile>\n\n"
+            f"<firm_corpus>\n{corpus_text}\n</firm_corpus>"
+        ),
+        "cache_control": {"type": "ephemeral"},
+    })
+
     with client.messages.stream(
         model="claude-opus-4-7",
         max_tokens=16000,
         thinking={"type": "adaptive"},
-        system=[
-            {"type": "text", "text": INSTRUCTIONS},
-            {
-                "type": "text",
-                "text": (
-                    f"<firm_profile>\n{profile_text}\n</firm_profile>\n\n"
-                    f"<firm_corpus>\n{corpus_text}\n</firm_corpus>"
-                ),
-                "cache_control": {"type": "ephemeral"},
-            },
-        ],
+        system=system_blocks,
         messages=[
             {
                 "role": "user",
@@ -342,6 +371,7 @@ def run_analysis(
     source: str = "upload",
     subject: str | None = None,
     partner_id: str | None = None,
+    analyst_persona: str | None = None,
     stream_callback: Callable[[str], None] | None = None,
     write_disk: bool = True,
 ) -> dict[str, Any]:
@@ -374,6 +404,7 @@ def run_analysis(
         deck_filename=deck_filename,
         profile_text=profile_text,
         corpus_text=corpus_text,
+        analyst_persona=analyst_persona,
         stream_callback=stream_callback,
     )
 
@@ -384,7 +415,9 @@ def run_analysis(
         questions=result["questions"],
         full_memo_md=result["full_memo_md"],
         usage=result.get("usage"),
+        analyst_persona=analyst_persona,
     )
+    result["analyst_persona"] = analyst_persona
 
     result["deck_id"] = deck_row["id"]
     result["analysis_id"] = analysis_row["id"]

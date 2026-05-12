@@ -398,6 +398,7 @@ def _run_analysis_with_fallback(firm: dict, deck_text: str, metadata: dict) -> d
                 deck_filename=metadata["deck_filename"],
                 source="upload",
                 partner_id=None,
+                analyst_persona=metadata.get("analyst_persona") or None,
             )
             result["metadata"] = metadata
             result["created_at"] = datetime.now(timezone.utc).isoformat()

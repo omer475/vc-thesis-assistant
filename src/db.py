@@ -272,6 +272,7 @@ def insert_analysis(
     questions: list[str] | None,
     full_memo_md: str,
     usage: dict | None = None,
+    analyst_persona: str | None = None,
 ) -> dict:
     payload: dict[str, Any] = {
         "deck_id": deck_id,
@@ -286,6 +287,8 @@ def insert_analysis(
         payload["cache_read_tokens"] = usage.get("cache_read_input_tokens")
         payload["cache_write_tokens"] = usage.get("cache_creation_input_tokens")
         payload["latency_ms"] = usage.get("latency_ms")
+    if analyst_persona is not None:
+        payload["analyst_persona"] = analyst_persona
     res = client().table("analyses").insert(payload).execute()
     return res.data[0]
 
