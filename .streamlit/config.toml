@@ -1,0 +1,7 @@
+[server]
+# Streamlit Community Cloud's free tier exhausts inotify watch handles after
+# a few module reloads, which spews "inotify instance limit reached" warnings
+# and can leave the app serving a stale module graph. We don't need hot-
+# reload in production — disable the watcher entirely.
+fileWatcherType = "none"
+headless = true
