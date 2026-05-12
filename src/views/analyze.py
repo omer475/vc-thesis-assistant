@@ -5,8 +5,7 @@ Layout:
   - "+ New analysis" opens a modal dialog with manual metadata fields:
     analysis name, company name, website, investment sought, analyst persona.
   - On submit: run analysis (real if API key available; mock otherwise) and
-    display the extended output (Verdict, Success Estimation, Match Score,
-    Why bullets, Questions to ask).
+    display the verdict, why bullets, and questions to ask.
   - Below: "Recent deals" — list of past analyses (moved here from Analytics).
 """
 
@@ -48,7 +47,6 @@ from src.styles import (
     RADIUS_LG,
     RADIUS_MD,
     RADIUS_SM,
-    TAKE_DOT,
     TEXT_PRIMARY,
     TEXT_SECONDARY,
     TEXT_TERTIARY,
@@ -108,28 +106,14 @@ def _all_analyses(firm: dict) -> list[dict]:
     return local + db_rows
 
 
-def _deterministic_score(seed_text: str, base: int, spread: int) -> int:
-    """Make a stable but plausible-looking score from a seed string."""
-    h = hashlib.md5(seed_text.encode("utf-8")).hexdigest()
-    val = int(h[:6], 16) % spread
-    return base + val
-
-
 def _mock_analysis_result(metadata: dict, deck_text: str) -> dict:
     """Generate a plausible analysis when the Anthropic API key is missing.
-    Outputs the same shape as `src.analyze.run_analysis` plus the extended
-    scoring fields."""
+    Outputs the same shape as `src.analyze.run_analysis`. Verdict cycles
+    through the three values deterministically from the seed so the mock
+    isn't always the same."""
     seed = (metadata.get("analysis_name") or "") + (metadata.get("company_name") or "")
-    success = _deterministic_score(seed + "_success", 40, 60)
-    match = _deterministic_score(seed + "_match", 35, 65)
-
-    avg = (success + match) // 2
-    if avg >= 70:
-        verdict = "Take meeting"
-    elif avg >= 50:
-        verdict = "Ask first"
-    else:
-        verdict = "Pass"
+    verdict_choice = int(hashlib.md5(seed.encode("utf-8")).hexdigest()[:2], 16) % 3
+    verdict = ("Take meeting", "Ask first", "Pass")[verdict_choice]
 
     company = metadata.get("company_name") or "the company"
     persona = metadata.get("analyst_persona") or ANALYST_PERSONAS[0]["label"]
@@ -175,8 +159,6 @@ def _mock_analysis_result(metadata: dict, deck_text: str) -> dict:
         "bullets": bullets,
         "questions": questions,
         "full_memo_md": full_memo,
-        "success_score": success,
-        "match_score": match,
         "analysis_id": str(uuid.uuid4()),
         "deck_id": str(uuid.uuid4()),
         "metadata": metadata,
@@ -200,8 +182,6 @@ def _persist_mock_analysis(firm_id: str, result: dict) -> None:
         "bullets": result["bullets"],
         "questions": result["questions"],
         "full_memo_md": result["full_memo_md"],
-        "success_score": result.get("success_score"),
-        "match_score": result.get("match_score"),
         "created_at": result["created_at"],
         "deck": deck,
         "partner": None,
@@ -210,39 +190,11 @@ def _persist_mock_analysis(firm_id: str, result: dict) -> None:
     _local_analyses(firm_id).insert(0, row)
 
 
-# ----- score gauge -----------------------------------------------------------
-
-
-def _score_gauge_html(label: str, value: int, color: str) -> str:
-    """A horizontal bar gauge for a 0-100 score, with the value and label."""
-    pct = max(0, min(100, value))
-    return (
-        f'<div style="padding: 22px 24px; background: {BG_CARD}; '
-        f'border: 1px solid {BORDER_DEFAULT}; border-radius: {RADIUS_MD};">'
-        f'<div style="display: flex; justify-content: space-between; '
-        f'align-items: baseline; margin-bottom: 14px;">'
-        f'<span style="font-size: 11px; color: {TEXT_TERTIARY}; '
-        f'letter-spacing: 0.12em; text-transform: uppercase; font-weight: 500;">'
-        f"{label}</span>"
-        f'<span style="font-family: {FONT_SERIF}; font-size: 32px; '
-        f'font-weight: 500; color: {TEXT_PRIMARY}; line-height: 1;">'
-        f'{value}<span style="font-size: 16px; color: {TEXT_TERTIARY}; '
-        f'margin-left: 4px;">/100</span></span></div>'
-        f'<div style="height: 6px; background: rgba(255,255,255,0.05); '
-        f'border-radius: 99px; overflow: hidden;">'
-        f'<div style="width: {pct}%; height: 100%; background: {color}; '
-        f'border-radius: 99px;"></div></div>'
-        f"</div>"
-    )
-
-
 def _render_completed_triage(result: dict) -> None:
-    """Render the full analysis result: verdict, scores, bullets, questions."""
+    """Render the full analysis result: verdict, bullets, questions."""
     verdict = result.get("verdict") or "Unknown"
     bullets = result.get("bullets") or []
     questions = result.get("questions") or []
-    success = result.get("success_score")
-    match = result.get("match_score")
 
     # Verdict pill row
     pill_html = verdict_pill(verdict, "lg")
@@ -257,15 +209,6 @@ def _render_completed_triage(result: dict) -> None:
         )
         + f"</div>"
     )
-
-    # Score gauges — 2-up grid
-    if success is not None and match is not None:
-        col1, col2 = st.columns(2)
-        with col1:
-            st.html(_score_gauge_html("Success estimation", success, TAKE_DOT))
-        with col2:
-            st.html(_score_gauge_html("Match score", match, ACCENT))
-        st.html('<div style="height: 24px;"></div>')
 
     # Why bullets
     if bullets:
@@ -456,9 +399,6 @@ def _run_analysis_with_fallback(firm: dict, deck_text: str, metadata: dict) -> d
                 source="upload",
                 partner_id=None,
             )
-            seed = metadata.get("analysis_name", "") + metadata.get("company_name", "")
-            result.setdefault("success_score", _deterministic_score(seed + "_s", 55, 40))
-            result.setdefault("match_score", _deterministic_score(seed + "_m", 50, 45))
             result["metadata"] = metadata
             result["created_at"] = datetime.now(timezone.utc).isoformat()
             return result
