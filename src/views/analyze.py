@@ -370,25 +370,40 @@ def _new_analysis_dialog(firm: dict) -> None:
             result = _run_analysis_with_fallback(firm, deck_text, metadata)
 
         st.session_state["_an_last_result"] = result
-        st.success("Analysis complete.")
+        # Don't announce "Analysis complete" if we fell back to mock — that's
+        # the previous bug that masked silent fallback. The diagnostic on the
+        # result dict will be surfaced by render_analyze_tab after the rerun.
         st.rerun()
 
 
 def _run_analysis_with_fallback(firm: dict, deck_text: str, metadata: dict) -> dict:
     """Try real analysis via Claude; fall back to mock if the API key is
-    missing or the call fails."""
+    missing or the call fails.
+
+    Diagnostics are stashed on the returned dict under `_diagnostic` rather
+    than rendered inline, because this function is called inside a
+    `@st.dialog` which `st.rerun()`s on completion — and st.rerun() discards
+    every widget rendered inside the dialog, including st.warning/error.
+    The caller (`render_analyze_tab`) surfaces the diagnostic above the
+    result so it survives the dialog → rerun cycle.
+    """
     import os
     import traceback
 
     api_key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
     use_real = api_key and not api_key.startswith("sk-dummy")
 
+    diagnostic: dict | None = None
+
     if not use_real:
-        st.warning(
-            "ANTHROPIC_API_KEY isn't set on this deployment — showing mock "
-            "output. Add it under Streamlit Cloud → Manage app → Settings → "
-            "Secrets to enable real analysis."
-        )
+        diagnostic = {
+            "level": "warning",
+            "message": (
+                "ANTHROPIC_API_KEY isn't set on this deployment — showing mock "
+                "output. Add it to your `.env` locally, or under Streamlit "
+                "Cloud → Manage app → Settings → Secrets, to enable real analysis."
+            ),
+        }
     else:
         try:
             from src.analyze import run_analysis
@@ -404,16 +419,38 @@ def _run_analysis_with_fallback(firm: dict, deck_text: str, metadata: dict) -> d
             result["created_at"] = datetime.now(timezone.utc).isoformat()
             return result
         except Exception as e:
-            st.error(
-                f"Live analysis failed — falling back to mock. "
-                f"**{type(e).__name__}:** {e}"
-            )
-            with st.expander("Full traceback (for debugging)"):
-                st.code(traceback.format_exc(), language="python")
+            diagnostic = {
+                "level": "error",
+                "message": (
+                    f"Live analysis failed — falling back to mock. "
+                    f"**{type(e).__name__}:** {e}"
+                ),
+                "traceback": traceback.format_exc(),
+            }
 
     result = _mock_analysis_result(metadata, deck_text)
+    if diagnostic:
+        result["_diagnostic"] = diagnostic
     _persist_mock_analysis(firm["id"], result)
     return result
+
+
+def _render_diagnostic(diagnostic: dict) -> None:
+    """Surface a real/mock fallback diagnostic above the result block.
+
+    Called from `render_analyze_tab`, AFTER the dialog's st.rerun() — so this
+    is where the warning/error actually becomes visible to the user.
+    """
+    level = diagnostic.get("level", "warning")
+    message = diagnostic.get("message", "")
+    if level == "error":
+        st.error(message)
+        tb = diagnostic.get("traceback")
+        if tb:
+            with st.expander("Full traceback (for debugging)"):
+                st.code(tb, language="python")
+    else:
+        st.warning(message)
 
 
 # ----- main entry point ------------------------------------------------------
@@ -437,6 +474,13 @@ def render_analyze_tab(firm: dict) -> None:
     if last_result is not None:
         meta = last_result.get("metadata", {})
         st.html('<div style="height: 16px;"></div>')
+
+        # Surface fallback diagnostic (warning when API key absent, error
+        # when live call failed). Has to render here, not inside the dialog,
+        # because the dialog's st.rerun() discards everything rendered in it.
+        diagnostic = last_result.get("_diagnostic")
+        if diagnostic:
+            _render_diagnostic(diagnostic)
         st.html(
             f'<div style="background: {BG_CARD}; border: 1px solid {BORDER_DEFAULT}; '
             f'border-radius: {RADIUS_LG}; padding: 32px 36px; margin-bottom: 28px;">'
