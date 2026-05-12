@@ -435,11 +435,18 @@ def _run_analysis_with_fallback(firm: dict, deck_text: str, metadata: dict) -> d
     """Try real analysis via Claude; fall back to mock if the API key is
     missing or the call fails."""
     import os
+    import traceback
 
     api_key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
     use_real = api_key and not api_key.startswith("sk-dummy")
 
-    if use_real:
+    if not use_real:
+        st.warning(
+            "ANTHROPIC_API_KEY isn't set on this deployment — showing mock "
+            "output. Add it under Streamlit Cloud → Manage app → Settings → "
+            "Secrets to enable real analysis."
+        )
+    else:
         try:
             from src.analyze import run_analysis
             result = run_analysis(
@@ -449,17 +456,20 @@ def _run_analysis_with_fallback(firm: dict, deck_text: str, metadata: dict) -> d
                 source="upload",
                 partner_id=None,
             )
-            # Backfill scores (the live pipeline may not include them yet)
             seed = metadata.get("analysis_name", "") + metadata.get("company_name", "")
             result.setdefault("success_score", _deterministic_score(seed + "_s", 55, 40))
             result.setdefault("match_score", _deterministic_score(seed + "_m", 50, 45))
             result["metadata"] = metadata
             result["created_at"] = datetime.now(timezone.utc).isoformat()
             return result
-        except Exception:
-            pass
+        except Exception as e:
+            st.error(
+                f"Live analysis failed — falling back to mock. "
+                f"**{type(e).__name__}:** {e}"
+            )
+            with st.expander("Full traceback (for debugging)"):
+                st.code(traceback.format_exc(), language="python")
 
-    # Fallback: mock
     result = _mock_analysis_result(metadata, deck_text)
     _persist_mock_analysis(firm["id"], result)
     return result
